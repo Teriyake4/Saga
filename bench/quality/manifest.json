@@ -1,0 +1,514 @@
+{
+  "$schema": "manifest.schema.json",
+  "blockers": [
+    "No original BF16 model execution or full checkpoint checksum inventory.",
+    "No frozen quality policy budget or mandatory measurement.",
+    "No independent operator/state or stochastic sampler fixtures.",
+    "No MTP/vision component compatibility/quality evidence.",
+    "No native 4080 or Linux/native-Windows qualification evidence."
+  ],
+  "comparisons": [
+    {
+      "baseline_requirement": "original BF16 text at the pinned original checkpoint",
+      "id": "gsq-vs-original-bf16",
+      "milestones": [
+        "M0",
+        "M3",
+        "M5"
+      ],
+      "preregistration": {
+        "baseline_checkpoint_revision_and_files": null,
+        "baseline_precision_and_execution": null,
+        "budget_baseline_evidence_and_approval": null,
+        "calibration_split": null,
+        "confidence_method_and_level": null,
+        "context_lengths": null,
+        "dataset_revisions_and_hashes": null,
+        "evaluation_harness_revision": null,
+        "freeze_record": null,
+        "held_out_split": null,
+        "metrics_and_directions": null,
+        "prompts_token_ids_and_template": null,
+        "regression_budgets": null,
+        "sample_sizes": null,
+        "seeds": null,
+        "split_disjointness_evidence": null,
+        "stopping_and_multiple_comparisons": null
+      },
+      "proposed_metrics": [
+        "held-out distribution/logit error",
+        "perplexity",
+        "task quality"
+      ],
+      "results": null,
+      "status": "blocked",
+      "unresolved": [
+        "Original baseline execution and independent harness unavailable.",
+        "Datasets/split disjointness, metrics/budgets, confidence, seeds and sample sizes have not been approved."
+      ]
+    },
+    {
+      "baseline_requirement": "two-byte KV with identical represented text weights",
+      "id": "kv-vs-two-byte",
+      "milestones": [
+        "M7a",
+        "M7b",
+        "M9"
+      ],
+      "preregistration": {
+        "baseline_checkpoint_revision_and_files": null,
+        "baseline_precision_and_execution": null,
+        "budget_baseline_evidence_and_approval": null,
+        "calibration_split": null,
+        "confidence_method_and_level": null,
+        "context_lengths": null,
+        "dataset_revisions_and_hashes": null,
+        "evaluation_harness_revision": null,
+        "freeze_record": null,
+        "held_out_split": null,
+        "metrics_and_directions": null,
+        "prompts_token_ids_and_template": null,
+        "regression_budgets": null,
+        "sample_sizes": null,
+        "seeds": null,
+        "split_disjointness_evidence": null,
+        "stopping_and_multiple_comparisons": null
+      },
+      "proposed_metrics": [
+        "long-context retrieval",
+        "context-dependent logit/task error",
+        "append/reconstruction"
+      ],
+      "results": null,
+      "status": "blocked",
+      "unresolved": [
+        "Original baseline execution and independent harness unavailable.",
+        "Datasets/split disjointness, metrics/budgets, confidence, seeds and sample sizes have not been approved."
+      ]
+    },
+    {
+      "baseline_requirement": "matching original MTP precision and vocabulary binding",
+      "id": "mtp-component-vs-source",
+      "milestones": [
+        "M3",
+        "M9"
+      ],
+      "preregistration": {
+        "baseline_checkpoint_revision_and_files": null,
+        "baseline_precision_and_execution": null,
+        "budget_baseline_evidence_and_approval": null,
+        "calibration_split": null,
+        "confidence_method_and_level": null,
+        "context_lengths": null,
+        "dataset_revisions_and_hashes": null,
+        "evaluation_harness_revision": null,
+        "freeze_record": null,
+        "held_out_split": null,
+        "metrics_and_directions": null,
+        "prompts_token_ids_and_template": null,
+        "regression_budgets": null,
+        "sample_sizes": null,
+        "seeds": null,
+        "split_disjointness_evidence": null,
+        "stopping_and_multiple_comparisons": null
+      },
+      "proposed_metrics": [
+        "component error",
+        "acceptance by depth",
+        "net committed-token benefit"
+      ],
+      "results": null,
+      "status": "blocked",
+      "unresolved": [
+        "Original baseline execution and independent harness unavailable.",
+        "Datasets/split disjointness, metrics/budgets, confidence, seeds and sample sizes have not been approved."
+      ]
+    },
+    {
+      "baseline_requirement": "matching original vision precision",
+      "id": "vision-component-vs-source",
+      "milestones": [
+        "M3",
+        "M10"
+      ],
+      "preregistration": {
+        "baseline_checkpoint_revision_and_files": null,
+        "baseline_precision_and_execution": null,
+        "budget_baseline_evidence_and_approval": null,
+        "calibration_split": null,
+        "confidence_method_and_level": null,
+        "context_lengths": null,
+        "dataset_revisions_and_hashes": null,
+        "evaluation_harness_revision": null,
+        "freeze_record": null,
+        "held_out_split": null,
+        "metrics_and_directions": null,
+        "prompts_token_ids_and_template": null,
+        "regression_budgets": null,
+        "sample_sizes": null,
+        "seeds": null,
+        "split_disjointness_evidence": null,
+        "stopping_and_multiple_comparisons": null
+      },
+      "proposed_metrics": [
+        "features and final logits",
+        "CPU/GPU placement",
+        "expanded-token alignment"
+      ],
+      "results": null,
+      "status": "blocked",
+      "unresolved": [
+        "Original baseline execution and independent harness unavailable.",
+        "Datasets/split disjointness, metrics/budgets, confidence, seeds and sample sizes have not been approved."
+      ]
+    },
+    {
+      "baseline_requirement": "target sampler under identical processors and stop rules",
+      "id": "exact-stochastic-mtp",
+      "milestones": [
+        "M9"
+      ],
+      "preregistration": {
+        "baseline_checkpoint_revision_and_files": null,
+        "baseline_precision_and_execution": null,
+        "budget_baseline_evidence_and_approval": null,
+        "calibration_split": null,
+        "confidence_method_and_level": null,
+        "context_lengths": null,
+        "dataset_revisions_and_hashes": null,
+        "evaluation_harness_revision": null,
+        "freeze_record": null,
+        "held_out_split": null,
+        "metrics_and_directions": null,
+        "prompts_token_ids_and_template": null,
+        "regression_budgets": null,
+        "sample_sizes": null,
+        "seeds": null,
+        "split_disjointness_evidence": null,
+        "stopping_and_multiple_comparisons": null
+      },
+      "proposed_metrics": [
+        "enumerable small-vocabulary distributions",
+        "multi-round statistical tests",
+        "zero probability/restricted support/rejection/all-accepted boundaries"
+      ],
+      "results": null,
+      "status": "blocked",
+      "unresolved": [
+        "Original baseline execution and independent harness unavailable.",
+        "Datasets/split disjointness, metrics/budgets, confidence, seeds and sample sizes have not been approved."
+      ]
+    },
+    {
+      "baseline_requirement": "complete original BF16 multimodal checkpoint",
+      "id": "multimodal-vs-original-bf16",
+      "milestones": [
+        "M10"
+      ],
+      "preregistration": {
+        "baseline_checkpoint_revision_and_files": null,
+        "baseline_precision_and_execution": null,
+        "budget_baseline_evidence_and_approval": null,
+        "calibration_split": null,
+        "confidence_method_and_level": null,
+        "context_lengths": null,
+        "dataset_revisions_and_hashes": null,
+        "evaluation_harness_revision": null,
+        "freeze_record": null,
+        "held_out_split": null,
+        "metrics_and_directions": null,
+        "prompts_token_ids_and_template": null,
+        "regression_budgets": null,
+        "sample_sizes": null,
+        "seeds": null,
+        "split_disjointness_evidence": null,
+        "stopping_and_multiple_comparisons": null
+      },
+      "proposed_metrics": [
+        "held-out image-to-answer tasks",
+        "final logits",
+        "image plus MTP continuations"
+      ],
+      "results": null,
+      "status": "blocked",
+      "unresolved": [
+        "Original baseline execution and independent harness unavailable.",
+        "Datasets/split disjointness, metrics/budgets, confidence, seeds and sample sizes have not been approved."
+      ]
+    }
+  ],
+  "format_version": 1,
+  "freeze_required_fields": [
+    "baseline_checkpoint_revision_and_files",
+    "baseline_precision_and_execution",
+    "dataset_revisions_and_hashes",
+    "calibration_split",
+    "held_out_split",
+    "split_disjointness_evidence",
+    "prompts_token_ids_and_template",
+    "context_lengths",
+    "metrics_and_directions",
+    "regression_budgets",
+    "budget_baseline_evidence_and_approval",
+    "confidence_method_and_level",
+    "seeds",
+    "sample_sizes",
+    "stopping_and_multiple_comparisons",
+    "evaluation_harness_revision",
+    "freeze_record"
+  ],
+  "independent_fixture_inventory": [],
+  "kv_pair_availability": [
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "f32/f32",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "fp16/fp16",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "bf16/bf16",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q8_0/q8_0",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q5_0/q5_0",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q5_1/q5_1",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q4_0/q4_0",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q4_1/q4_1",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "iq4_nl/iq4_nl",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "int8_g64/int8_g64",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "int4_g64/int4_g64",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q8_0/q4_0",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q8_0/q5_0",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "q8_0/q5_1",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    },
+    {
+      "append_evidence": null,
+      "backend": null,
+      "capacity_tokens": null,
+      "decode_evidence": null,
+      "main_geometry": null,
+      "mtp_geometry": null,
+      "native_os_evidence": null,
+      "pair": "int8_g64/int4_g64",
+      "placement": null,
+      "prefill_evidence": null,
+      "quality_evidence": null,
+      "status": "unqualified",
+      "verify_evidence": null
+    }
+  ],
+  "operator_tolerances": null,
+  "policy": "../../docs/quality-policy.md",
+  "proposed_workloads": [
+    "Encoding: group boundaries, sign, padding, scale extremes and exact represented-value round trips.",
+    "State: tokenwise/chunked prefill, restart, continuation, reset, checkpoint, cancellation/slot reuse.",
+    "Execution: eager/graph, partial chunks/tails, masked access checks and long context."
+  ],
+  "qualification": "not-qualified",
+  "required_kv_pairs": [
+    "f32/f32",
+    "fp16/fp16",
+    "bf16/bf16",
+    "q8_0/q8_0",
+    "q5_0/q5_0",
+    "q5_1/q5_1",
+    "q4_0/q4_0",
+    "q4_1/q4_1",
+    "iq4_nl/iq4_nl",
+    "int8_g64/int8_g64",
+    "int4_g64/int4_g64",
+    "q8_0/q4_0",
+    "q8_0/q5_0",
+    "q8_0/q5_1",
+    "int8_g64/int4_g64"
+  ],
+  "status": "blocked"
+}

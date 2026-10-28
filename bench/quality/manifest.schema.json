@@ -1,0 +1,435 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "manifest.schema.json"
+    },
+    "blockers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "comparisons": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline_requirement": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "milestones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "preregistration": {
+            "additionalProperties": false,
+            "properties": {
+              "baseline_checkpoint_revision_and_files": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "baseline_precision_and_execution": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "budget_baseline_evidence_and_approval": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "calibration_split": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "confidence_method_and_level": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "context_lengths": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "dataset_revisions_and_hashes": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "evaluation_harness_revision": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "freeze_record": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "held_out_split": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "metrics_and_directions": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "prompts_token_ids_and_template": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "regression_budgets": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "sample_sizes": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "seeds": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "split_disjointness_evidence": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              },
+              "stopping_and_multiple_comparisons": {
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "baseline_checkpoint_revision_and_files",
+              "baseline_precision_and_execution",
+              "dataset_revisions_and_hashes",
+              "calibration_split",
+              "held_out_split",
+              "split_disjointness_evidence",
+              "prompts_token_ids_and_template",
+              "context_lengths",
+              "metrics_and_directions",
+              "regression_budgets",
+              "budget_baseline_evidence_and_approval",
+              "confidence_method_and_level",
+              "seeds",
+              "sample_sizes",
+              "stopping_and_multiple_comparisons",
+              "evaluation_harness_revision",
+              "freeze_record"
+            ],
+            "type": "object"
+          },
+          "proposed_metrics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "results": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "blocked",
+              "candidate",
+              "frozen"
+            ]
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "milestones",
+          "status",
+          "baseline_requirement",
+          "proposed_metrics",
+          "preregistration",
+          "unresolved",
+          "results"
+        ],
+        "type": "object"
+      },
+      "minItems": 6,
+      "type": "array"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "freeze_required_fields": {
+      "const": [
+        "baseline_checkpoint_revision_and_files",
+        "baseline_precision_and_execution",
+        "dataset_revisions_and_hashes",
+        "calibration_split",
+        "held_out_split",
+        "split_disjointness_evidence",
+        "prompts_token_ids_and_template",
+        "context_lengths",
+        "metrics_and_directions",
+        "regression_budgets",
+        "budget_baseline_evidence_and_approval",
+        "confidence_method_and_level",
+        "seeds",
+        "sample_sizes",
+        "stopping_and_multiple_comparisons",
+        "evaluation_harness_revision",
+        "freeze_record"
+      ]
+    },
+    "independent_fixture_inventory": {
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "kv_pair_availability": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "append_evidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "backend": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capacity_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "decode_evidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "main_geometry": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "mtp_geometry": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "native_os_evidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "pair": {
+            "type": "string"
+          },
+          "placement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prefill_evidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "quality_evidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "const": "unqualified"
+          },
+          "verify_evidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "pair",
+          "status",
+          "main_geometry",
+          "mtp_geometry",
+          "backend",
+          "placement",
+          "capacity_tokens",
+          "append_evidence",
+          "prefill_evidence",
+          "decode_evidence",
+          "verify_evidence",
+          "quality_evidence",
+          "native_os_evidence"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "operator_tolerances": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "policy": {
+      "const": "../../docs/quality-policy.md"
+    },
+    "proposed_workloads": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "qualification": {
+      "const": "not-qualified"
+    },
+    "required_kv_pairs": {
+      "const": [
+        "f32/f32",
+        "fp16/fp16",
+        "bf16/bf16",
+        "q8_0/q8_0",
+        "q5_0/q5_0",
+        "q5_1/q5_1",
+        "q4_0/q4_0",
+        "q4_1/q4_1",
+        "iq4_nl/iq4_nl",
+        "int8_g64/int8_g64",
+        "int4_g64/int4_g64",
+        "q8_0/q4_0",
+        "q8_0/q5_0",
+        "q8_0/q5_1",
+        "int8_g64/int4_g64"
+      ]
+    },
+    "status": {
+      "enum": [
+        "blocked",
+        "ready-for-review"
+      ]
+    }
+  },
+  "required": [
+    "$schema",
+    "format_version",
+    "status",
+    "qualification",
+    "policy",
+    "freeze_required_fields",
+    "comparisons",
+    "required_kv_pairs",
+    "kv_pair_availability",
+    "independent_fixture_inventory",
+    "operator_tolerances",
+    "proposed_workloads",
+    "blockers"
+  ],
+  "type": "object"
+}

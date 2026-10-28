@@ -1,0 +1,293 @@
+{
+  "$schema": "manifest.schema.json",
+  "acceptance_contract": {
+    "comparison_classes": [
+      "equal-configuration",
+      "quality-matched-system",
+      "best-system"
+    ],
+    "minimum_measured_repetitions": 5,
+    "missing_unmatched_or_failed_mandatory_case_blocks": true,
+    "per_case_max_uncached_ttft_ratio": 1.1,
+    "per_case_min_decode_ratio": 0.95,
+    "source": "IMPLEMENTATION_PLAN.md section 2"
+  },
+  "additional_candidate_workloads": [
+    "Naturally stopping prose, code-edit, reasoning and multi-turn traces.",
+    "16K/32K contexts only after measured feasibility.",
+    "Cold startup, retained-prefix and CPU/GPU image TTFT reported separately."
+  ],
+  "artifacts": [
+    {
+      "compatibility": "unverified",
+      "component": "original BF16 text quality oracle",
+      "files": [],
+      "id": "original-bf16-text",
+      "repository": "Qwen/Qwen3.8-27B",
+      "required": true,
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "status": "metadata-only",
+      "unresolved": [
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+      ]
+    },
+    {
+      "compatibility": "unverified",
+      "component": "GSQ text body and Q4 endpoints",
+      "files": [],
+      "id": "gsq-text",
+      "repository": "ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ",
+      "required": true,
+      "revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
+      "status": "metadata-only",
+      "unresolved": [
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+      ]
+    },
+    {
+      "compatibility": "unverified",
+      "component": "original MTP weights, exact tensor inventory unresolved",
+      "files": [],
+      "id": "original-mtp",
+      "repository": "Qwen/Qwen3.8-27B",
+      "required": true,
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "status": "metadata-only",
+      "unresolved": [
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+      ]
+    },
+    {
+      "compatibility": "unverified",
+      "component": "original multimodal/vision quality oracle",
+      "files": [],
+      "id": "original-vision",
+      "repository": "Qwen/Qwen3.8-27B",
+      "required": true,
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "status": "metadata-only",
+      "unresolved": [
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+      ]
+    },
+    {
+      "compatibility": "unverified",
+      "component": "tokenizer.json/vocab/merges bytes not retrieved",
+      "files": [],
+      "id": "tokenizer",
+      "repository": "Qwen/Qwen3.8-27B",
+      "required": true,
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "status": "metadata-only",
+      "unresolved": [
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+      ]
+    },
+    {
+      "compatibility": "unverified",
+      "component": "chat template metadata retrieved; execution/binding unverified",
+      "files": [
+        {
+          "bytes": 8952,
+          "path": "chat_template.jinja",
+          "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+        }
+      ],
+      "id": "template",
+      "repository": "Qwen/Qwen3.8-27B",
+      "required": true,
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "status": "metadata-only",
+      "unresolved": [
+        "Template bytes were retrieved and hashed; tokenizer binding, rendering, generation defaults and prompt token IDs remain unverified."
+      ]
+    },
+    {
+      "compatibility": "unverified",
+      "component": "reference artifact; publisher checksum is not a locally verified weight hash",
+      "files": [],
+      "id": "reference-container",
+      "repository": "roofkid/Qwen3.8-27B-GSQ3-NInfer",
+      "required": true,
+      "revision": "d648daf360dea5a9d0731071b5990da5293f525a",
+      "status": "metadata-only",
+      "unresolved": [
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+      ]
+    }
+  ],
+  "blockers": [
+    "M0.1 native original RTX 4080 hardware/toolchain conditions and both-OS evidence missing.",
+    "M0.2 pinned reference not built/run; exact reproducible commands/patches unresolved.",
+    "M0.3 full model/MTP/vision/tokenizer inventory and weight checksums/compatibility unverified.",
+    "M0.4 no inference code imported; per-file licensing/attribution review pending; Switchyard LICENSE probe returned 404.",
+    "M0.5 mandatory suite/OS scope and actual phase/site A16/A8/rounding dispatch unfrozen.",
+    "M0.6 independent scalar/layer/state fixtures missing.",
+    "M0.7 original-BF16 baselines, datasets, budgets and statistical preregistration unresolved.",
+    "M0.8 converter/build/dependency toolchain pins and artifact licenses/inventories not complete."
+  ],
+  "candidate_cases": [
+    {
+      "configuration": null,
+      "frozen": false,
+      "id": "proposed-plain-128",
+      "mandatory": false,
+      "mode": "plain",
+      "proposed_output_tokens": 512,
+      "proposed_prompt_tokens": 128,
+      "results": null,
+      "status": "candidate",
+      "unresolved": [
+        "Not a preregistered mandatory case.",
+        "Rendered prompt/token IDs, exact capacity/output reserve, precision/KV dispatch and timing policy must be frozen.",
+        "Native original 4080 matched runs are missing."
+      ]
+    },
+    {
+      "configuration": null,
+      "frozen": false,
+      "id": "proposed-plain-2k",
+      "mandatory": false,
+      "mode": "plain",
+      "proposed_output_tokens": 512,
+      "proposed_prompt_tokens": 2048,
+      "results": null,
+      "status": "candidate",
+      "unresolved": [
+        "Not a preregistered mandatory case.",
+        "Rendered prompt/token IDs, exact capacity/output reserve, precision/KV dispatch and timing policy must be frozen.",
+        "Native original 4080 matched runs are missing."
+      ]
+    },
+    {
+      "configuration": null,
+      "frozen": false,
+      "id": "proposed-plain-near-8k",
+      "mandatory": false,
+      "mode": "plain",
+      "proposed_output_tokens": 512,
+      "proposed_prompt_tokens": null,
+      "results": null,
+      "status": "candidate",
+      "unresolved": [
+        "Not a preregistered mandatory case.",
+        "Rendered prompt/token IDs, exact capacity/output reserve, precision/KV dispatch and timing policy must be frozen.",
+        "Native original 4080 matched runs are missing."
+      ]
+    },
+    {
+      "configuration": null,
+      "frozen": false,
+      "id": "proposed-native-mtp-128",
+      "mandatory": false,
+      "mode": "native-mtp",
+      "proposed_output_tokens": 512,
+      "proposed_prompt_tokens": 128,
+      "results": null,
+      "status": "candidate",
+      "unresolved": [
+        "Not a preregistered mandatory case.",
+        "Rendered prompt/token IDs, exact capacity/output reserve, precision/KV dispatch and timing policy must be frozen.",
+        "Native original 4080 matched runs are missing."
+      ]
+    },
+    {
+      "configuration": null,
+      "frozen": false,
+      "id": "proposed-native-mtp-2k",
+      "mandatory": false,
+      "mode": "native-mtp",
+      "proposed_output_tokens": 512,
+      "proposed_prompt_tokens": 2048,
+      "results": null,
+      "status": "candidate",
+      "unresolved": [
+        "Not a preregistered mandatory case.",
+        "Rendered prompt/token IDs, exact capacity/output reserve, precision/KV dispatch and timing policy must be frozen.",
+        "Native original 4080 matched runs are missing."
+      ]
+    },
+    {
+      "configuration": null,
+      "frozen": false,
+      "id": "proposed-native-mtp-near-8k",
+      "mandatory": false,
+      "mode": "native-mtp",
+      "proposed_output_tokens": 512,
+      "proposed_prompt_tokens": null,
+      "results": null,
+      "status": "candidate",
+      "unresolved": [
+        "Not a preregistered mandatory case.",
+        "Rendered prompt/token IDs, exact capacity/output reserve, precision/KV dispatch and timing policy must be frozen.",
+        "Native original 4080 matched runs are missing."
+      ]
+    }
+  ],
+  "format_version": 1,
+  "freeze_required_fields": [
+    "hardware_record",
+    "os_driver_power",
+    "engine_build_ids",
+    "build_and_run_commands",
+    "patches_and_sha256",
+    "represented_text_weights",
+    "represented_mtp_weights",
+    "tokenizer_files",
+    "template_files",
+    "prompt_token_ids",
+    "prompt_rendering",
+    "generation_and_stop_rules",
+    "sampling_processors_defaults_order",
+    "rng_and_seeds",
+    "kv_contracts_main_and_mtp",
+    "actual_phase_site_dispatch",
+    "accumulation_intermediate_rounding",
+    "graph_modes_profiles",
+    "prefill_verification_chunk_sizes",
+    "prefix_reuse",
+    "empty_request_state",
+    "ngram",
+    "draft_count_actual_verify_widths",
+    "draft_head_vocabulary_support",
+    "timing_boundaries",
+    "warmup_repetition_noise_policy",
+    "raw_record_schema"
+  ],
+  "hardware": {
+    "available_vram_bytes": null,
+    "compiler": null,
+    "cpu": null,
+    "cuda_toolkit": null,
+    "driver": null,
+    "gpu_sku": null,
+    "linux_native_evidence": null,
+    "os": null,
+    "power_display_clocks_thermals": null,
+    "ram_bytes": null,
+    "status": "unresolved",
+    "windows_native_msvc_evidence": null
+  },
+  "mandatory_cases": [],
+  "model_metadata": "model-metadata.json",
+  "qualification": "not-qualified",
+  "reference_build": {
+    "binary_sha256": null,
+    "build_commands": null,
+    "patches": [],
+    "repository": "yalding/ninfer-4080",
+    "revision": "2469b5752672ad597055af61fe28e8e7ced20056",
+    "run_commands": null,
+    "runtime_dispatch_trace": null,
+    "status": "not-built"
+  },
+  "retrieval_evidence": "retrieval-evidence.json",
+  "source_lock": "source-lock.json",
+  "status": "blocked",
+  "suite": {
+    "freeze_record": null,
+    "mandatory_suite_digest": null,
+    "os_scope": "unresolved",
+    "status": "unfrozen"
+  }
+}

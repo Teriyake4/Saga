@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "format_version": {
+      "const": 1
+    },
+    "inputs": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "source",
+              "build-probe",
+              "license-probe",
+              "commit-api",
+              "model-discovery",
+              "model-metadata"
+            ]
+          },
+          "local_path": {
+            "pattern": "^bench/reference/licenses/[A-Za-z0-9_.-]+[.]LICENSE$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repository": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "revision": {
+            "pattern": "^[0-9a-f]{40}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repository",
+          "revision",
+          "path",
+          "kind",
+          "url",
+          "required",
+          "sha256",
+          "bytes",
+          "local_path"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "retrieval_date": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format_version",
+    "retrieval_date",
+    "inputs"
+  ],
+  "type": "object"
+}

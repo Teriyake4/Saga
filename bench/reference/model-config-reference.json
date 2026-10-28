@@ -1,0 +1,24 @@
+{
+  "purpose": "Narrow upstream evidence for llama.cpp server model-config option naming and path behavior; Saga intentionally implements a much smaller, safer subset.",
+  "upstream": {
+    "repository": "https://github.com/ggml-org/llama.cpp",
+    "revision": "e86f5fd1e9f584b0fcec71d7da9a92de44e8bcbf",
+    "license": "MIT",
+    "license_url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/e86f5fd1e9f584b0fcec71d7da9a92de44e8bcbf/LICENSE",
+    "sources": [
+      {
+        "path": "tools/server/README.md",
+        "url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/e86f5fd1e9f584b0fcec71d7da9a92de44e8bcbf/tools/server/README.md",
+        "sha256": "ac7d7c77b3513f4d7195fc3ba73c1174b459a5ef7b585db84dd399354e32b338",
+        "notes": "Pinned documentation describes --models-preset as router configuration and documents model, alias, ctx-size, cache-type-k/v. This supports key naming only; Saga deliberately uses a single-profile contract."
+      }
+    ],
+    "hash_status": "SHA-256 computed from the exact raw pinned README URL with shasum -a 256."
+  },
+  "adaptation": {
+    "contract": "One [model] section and one profile per Saga process; no model catalog, named selector, wildcard, router, or hot reload.",
+    "adopted_option_names": ["model", "alias", "ctx-size", "cache-type-k", "cache-type-v"],
+    "implementation": "No upstream parser or implementation code copied. Unknown keys are rejected; server/security keys remain TOML-only; no shell/environment expansion is supported.",
+    "path_policy": "Saga resolves relative model artifacts against the INI file and explicitly handles Windows drive/UNC/root-relative cases."
+  }
+}
