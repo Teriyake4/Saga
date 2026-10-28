@@ -1,0 +1,45 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base", "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": { "SAGA_BUILD_TESTS": "ON", "SAGA_ENABLE_CUDA": "OFF" }
+    },
+    { "name": "host-debug", "inherits": "base", "generator": "Unix Makefiles", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
+    { "name": "host-release", "inherits": "host-debug", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } },
+    { "name": "host-sanitized", "inherits": "host-debug", "cacheVariables": { "SAGA_SANITIZERS": "ON" } },
+    { "name": "host-thread-sanitized", "inherits": "host-debug", "cacheVariables": { "SAGA_THREAD_SANITIZER": "ON" } },
+    {
+      "name": "windows-msvc-debug", "inherits": "base",
+      "generator": "Visual Studio 17 2022", "architecture": "x64",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "CMAKE_CONFIGURATION_TYPES": "Debug;Release", "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" }
+    },
+    {
+      "name": "windows-msvc-release", "inherits": "windows-msvc-debug",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    { "name": "cuda-linux", "inherits": "base", "generator": "Ninja", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "SAGA_ENABLE_CUDA": "ON", "CMAKE_CUDA_ARCHITECTURES": "89" } },
+    { "name": "cuda-windows", "inherits": "base", "generator": "Ninja", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "SAGA_ENABLE_CUDA": "ON", "CMAKE_CUDA_ARCHITECTURES": "89", "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" } }
+  ],
+  "buildPresets": [
+    { "name": "host-debug", "configurePreset": "host-debug" },
+    { "name": "host-release", "configurePreset": "host-release" },
+    { "name": "host-sanitized", "configurePreset": "host-sanitized" },
+    { "name": "host-thread-sanitized", "configurePreset": "host-thread-sanitized" },
+    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "configuration": "Debug" },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release" },
+    { "name": "cuda-linux", "configurePreset": "cuda-linux" },
+    { "name": "cuda-windows", "configurePreset": "cuda-windows" }
+  ],
+  "testPresets": [
+    { "name": "host-debug", "configurePreset": "host-debug", "output": { "outputOnFailure": true } },
+    { "name": "host-release", "configurePreset": "host-release", "output": { "outputOnFailure": true } },
+    { "name": "host-sanitized", "configurePreset": "host-sanitized", "output": { "outputOnFailure": true } },
+    { "name": "host-thread-sanitized", "configurePreset": "host-thread-sanitized", "output": { "outputOnFailure": true } },
+    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "configuration": "Debug", "output": { "outputOnFailure": true } },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release", "output": { "outputOnFailure": true } }
+  ]
+}

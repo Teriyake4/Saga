@@ -1,0 +1,186 @@
+# Original RTX 4080 CUDA portability probe (M1.6)
+
+## Evidence status
+
+**Implemented source only: not compiled, device-linked, or run.** The development
+machine for this change is macOS without `nvcc` or a CUDA GPU. Neither Linux nor
+native Windows/MSVC CUDA evidence exists from this change. M1.6 remains blocked
+until real original-4080 builds and runs are retained for **both** operating
+systems. Host-only builds, source review, mocks, cross-compilation, and WSL cannot
+substitute for those runs.
+
+`tests/cuda/portability_smoke.cu` is a standalone CUDA Runtime executable. It does
+not load a model, import inference kernels, require external math/JSON libraries,
+benchmark throughput, or qualify serving readiness.
+
+Limited host validation performed here: the extracted JSON escaping helper was
+compiled separately with Clang C++20 and round-tripped all 256 byte values through
+a JSON parser; a scalar check verified all 256 exact fixture expectations and
+BF16 input representability; all 17 declared checks have matching execution
+steps. This did **not** compile the `.cu` translation unit or exercise any CUDA
+API. Editor CUDA diagnostics are blocked by missing CUDA headers/toolkit/device
+libraries, not a successful CUDA syntax check.
+
+## What actually runs
+
+The default device is CUDA ordinal 0; `--device N` selects another nonnegative
+ordinal. There is deliberately **no other-device override**. Qualification requires:
+
+- Exact runtime name `NVIDIA GeForce RTX 4080` or `GeForce RTX 4080`, compute
+  capability 8.9, 32-lane warps, and **76 SMs**. RTX 4080 Super, laptop variants,
+  other GPUs, and incompatible kernel images fail rather than skip. This checks
+  driver-reported identity/properties, not tamper-resistant hardware attestation.
+- A real `cp.async.ca.shared.global` test: one block of 32 threads, each copying a
+  different aligned 16-byte `uint4` from global memory into an explicitly
+  16-byte-aligned shared array. Inline PTX commits and waits for each lane's async
+  group; a block barrier precedes the shared-to-global result read. All 128
+  32-bit words are compared exactly on the host. PTX is guarded by
+  `__CUDA_ARCH__ >= 800`; there is **no synchronous fallback**.
+- A real BF16 Tensor Core WMMA test: exactly one 32-lane warp, `m16n16k16`,
+  row-major BF16 inputs and FP32 accumulation/output. A is the identity;
+  `B[row,column] = (5*row + 3*column) % 17 - 8`. The accumulator starts at 0.5,
+  so every expected output is exactly `B[row,column] + 0.5`. All inputs and
+  expected outputs are exactly representable; all 256 outputs require exact
+  equality, with no tolerance or self-reference to a GPU result. The varying,
+  nonsymmetric B catches layout/transposition errors. Device allocations satisfy
+  WMMA's 32-byte base alignment; leading dimension 16 gives a 32-byte BF16 stride
+  and a 64-byte FP32 stride. Every lane executes the same WMMA operations.
+- Both kernels report their compiled `__CUDA_ARCH__`; each must return **890**.
+  `cudaFuncGetAttributes` must report `binaryVersion == 89` for each loaded
+  kernel. PTX version is recorded separately, not treated as physical GPU identity.
+- All allocations, host/device copies, output initialization, launches,
+  `cudaGetLastError`, explicit device synchronization, and device frees are
+  checked. Noncopyable RAII buffers free successful partial allocations on errors.
+  Destructors retain the first cleanup error without throwing; cleanup failure
+  also causes a nonzero exit. Results are read back only after synchronization.
+
+Checks fail fast; later checks remain `not_run`, never assumed to have passed.
+The allocation-cleanup check still runs after failure (and succeeds vacuously if
+nothing was allocated). A rejected device therefore does not execute the kernels.
+
+## Resource queries and their limits
+
+For **each actual smoke kernel**, using the actual 32-thread block and zero
+*dynamic* shared bytes, the probe checks `cudaFuncGetAttributes` and
+`cudaOccupancyMaxActiveBlocksPerMultiprocessor`. JSON records registers/thread,
+static shared bytes, local bytes/thread, maximum block threads, native binary/PTX
+versions, active blocks/SM, and resident warps/SM. The kernels must support one
+warp and at least one resident block. Static shared usage is already included by
+the occupancy API; it is not passed a second time as dynamic shared memory.
+
+Both `cudaDeviceProp::cooperativeLaunch` and
+`cudaDeviceGetAttribute(cudaDevAttrCooperativeLaunch)` are recorded and required
+to agree. **Unsupported cooperative launch is not a failure:** no cooperative
+algorithm is used, and no cooperative kernel is launched. When support is true,
+`active_blocks_per_sm * observed_sm_count` is reported as the occupancy-derived
+cooperative grid block bound for that particular smoke kernel/configuration;
+otherwise its cooperative bound is `null`. `cooperative_launch_exercised` is
+always `false`. These queries do not test grid synchronization or a cooperative
+launch, and do not establish that a future cooperative algorithm is portable.
+
+**These are tiny instruction/correctness smoke kernels, not representative
+inference workloads.** Their occupancy bounds, register counts, shared-memory
+usage, and correctness results say nothing about eventual attention/GEMM/codec
+kernel resource bounds, model fit, latency, bandwidth, throughput, or quality.
+Those kernels/configurations must be queried and measured independently.
+
+## Optional build integration
+
+The root `CMakeLists.txt` now integrates `SAGA_ENABLE_CUDA` and the optional
+`saga_cuda_portability_smoke` target. The default macOS/host-only build remains
+free of CUDA discovery and language initialization. The target configuration
+is equivalent to the following, with additional Linux/native-Windows checks
+and an initial CUDA compiler floor of 12.8:
+
+```cmake
+option(SAGA_ENABLE_CUDA "Build the original RTX 4080 portability probe" OFF)
+if(SAGA_ENABLE_CUDA)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    add_executable(saga_cuda_portability_smoke
+        tests/cuda/portability_smoke.cu)
+    set_target_properties(saga_cuda_portability_smoke PROPERTIES
+        CUDA_ARCHITECTURES 89
+        CUDA_STANDARD 20
+        CUDA_STANDARD_REQUIRED ON
+        CUDA_EXTENSIONS OFF
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
+        CUDA_RUNTIME_LIBRARY Shared)
+    target_link_libraries(saga_cuda_portability_smoke PRIVATE CUDA::cudart)
+endif()
+```
+
+Use CUDA >=12.8 and a supported host compiler with SM89/CUDA C++20 support;
+verify the exact toolkit/compiler support matrix. Saga requires CMake >=3.28.
+These are build requirements, not yet qualified production toolchain pins. No cuBLAS, NVML, CUDA Driver API
+link library, POSIX APIs, or third-party dependencies are needed. The CUDA
+Runtime shared library must be discoverable when running (including CUDA's DLL
+on Windows). Retain the verbose build log to prove separate device compilation,
+device link, host compiler, flags, and architecture; runtime JSON alone does
+not prove which build/link commands were executed. Do not silently fall back to
+host-only when `SAGA_ENABLE_CUDA=ON` but CUDA is unavailable.
+
+Example Linux commands from the repository root (the `cuda-linux` Ninja preset
+provides equivalent settings):
+
+```sh
+cmake -S . -B build-cuda -DSAGA_ENABLE_CUDA=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build-cuda --target saga_cuda_portability_smoke --verbose
+./build-cuda/saga_cuda_portability_smoke --device 0 > cuda-portability-linux.json
+```
+
+For native Windows, use an x64 MSVC developer prompt with the chosen CUDA toolkit
+on PATH and, for example, the Ninja generator:
+
+```powershell
+cmake -S . -B build-cuda-win -G Ninja -DSAGA_ENABLE_CUDA=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build-cuda-win --target saga_cuda_portability_smoke --verbose
+.\build-cuda-win\saga_cuda_portability_smoke.exe --device 0 > cuda-portability-windows.json
+$LASTEXITCODE
+```
+
+These are procedures, **not commands run or passes claimed by this change**.
+For another generator, executable paths/configuration selection may differ.
+PowerShell redirection encoding varies by version; retain valid UTF-8 JSON when
+moving the report into an evidence archive. Check the process exit code before
+running another command (`$LASTEXITCODE` on PowerShell; the shell's process
+status on Linux). Do not treat the existence of a redirected file as success.
+
+## JSON and acceptance evidence
+
+Normal success and handled failures emit one JSON object on stdout; success
+returns 0, and any failed check/CUDA operation/cleanup or stdout write failure
+returns nonzero. Driver strings and error text are JSON escaped. Non-ASCII bytes
+are escaped individually as `\u00XX`, preserving JSON validity without assuming
+the encoding of driver messages. Fatal process/driver termination cannot be
+promised to produce a complete report.
+
+The schema records:
+
+- NVCC major/minor/build, CUDA header version, host compiler/version, OS family,
+  and `__cplusplus` (MSVC may report its legacy macro value without `/Zc:__cplusplus`;
+  the retained C++20 compile flags are authoritative).
+- Driver/runtime API versions in CUDA's integer format (for example, 12040 means
+  12.4), selected ordinal/device count, device name, compute capability, actual
+  and expected SM count, warp size, and `totalGlobalMem`.
+- `cudaMemGetInfo` free/total bytes after context initialization but before probe
+  allocations. Unqueried memory/device fields are `null`; version/compiled-arch
+  zero and count/attribute -1 denote not obtained, not valid measurements.
+  Display/OS/runtime reservations can reduce visible memory; no exact 16-GiB
+  equality or inference-capacity assertion is made.
+- Per-kernel compile architecture and resources, cooperative support/query,
+  whether cooperative launch was exercised, and individual named checks with
+  `pass`, `fail`, or `not_run` and failure details. Overall `passed` must be true
+  **and** the exit code zero; neither alone replaces inspection of retained logs.
+
+For M1.6, retain separate **native Linux and native Windows/MSVC** evidence on a
+physical original RTX 4080: source revision/hash, CMake configuration/cache,
+`cmake --version`, `nvcc --version`, host compiler version, full verbose
+compile/device-link logs and process exit codes, and unedited runtime JSON.
+Record OS version, GPU identity/UUID, host CPU/RAM, driver/toolkit installation,
+display/background GPU load, power policy, and memory conditions externally
+(e.g. `nvidia-smi` plus platform tools); the probe is not a full environment
+inventory. A passing run demonstrates only these instruction, launch/result,
+and resource-query paths. Future inference/cooperative paths and broader M1
+server acceptance remain separate gates.
