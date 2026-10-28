@@ -84,7 +84,7 @@ Use one INI file per model/instance, separate from the server's TOML settings:
 
 ```ini
 [model]
-model = C:\Models\qwen3_8_27b_gsq3.engine
+model = C:\Models\qwen3_8_27b_gsq3.gguf
 alias = qwen3.8-27b-gsq3
 runtime = qwen3_8_27b
 ctx-size = 8192
@@ -106,9 +106,12 @@ anchored to the INI directory; Windows drive/UNC paths and Unicode are preserved
 The INI follows familiar llama.cpp option names but is intentionally not a
 full llama.cpp router/options file. See [docs/model-config.md](docs/model-config.md).
 
-Static validation does not load the artifact. A nonempty artifact still produces
-an explicit unsupported-loading error at normal startup in this increment; no
-model entry or completion is fabricated. GSQ3 artifacts are not GGUF Q3 files.
+Static validation does not load the artifact or enforce a filename extension. A
+nonempty artifact still produces an explicit unsupported-loading error at normal
+startup in this increment; no model entry or completion is fabricated. GGUF is
+the planned runtime input container, not an implemented loader or a promise to
+support arbitrary GGUF models. Saga's GSQ3 profile is not GGUF Q3_K/Q3_K_M/IQ3;
+see [docs/artifact-format.md](docs/artifact-format.md).
 
 ### Limits and authentication
 
@@ -156,6 +159,9 @@ model entry or completion is fabricated. GSQ3 artifacts are not GGUF Q3 files.
   ledger locks, and expired allocation-owner history is retired immediately.
 - Metadata/checked byte calculation for all eleven required KV formats and curated
   mixed pairs. No append/read/attention implementations or codec availability claim.
+- A minimal model/backend contract slice provides structural metadata/program checks
+  and owning static registries, exercised only with synthetic implementations. It
+  does not load GGUF, register a production model/backend, or implement inference.
 - A separately selected `saga_platform` target: `src/platform/shared/` for common
   checks, `src/platform/windows/` for native Windows mapping/process APIs, and
   `src/platform/linux/` for deferred Linux selection reusing `src/platform/posix/`.
@@ -175,7 +181,7 @@ model entry or completion is fabricated. GSQ3 artifacts are not GGUF Q3 files.
 These runtime primitives are tested libraries, **not wired into HTTP generation**.
 Production model/backend sessions, automatic context search and liveness-based
 scratch reuse remain future work. No model/device-specific code was added in this
-increment. The full 17-group suite passes on macOS in Debug, Release, ASan/UBSan
+increment. The current 18-group suite passes on macOS in Debug, Release, ASan/UBSan
 and TSan; native Windows/MSVC execution is still unverified.
 
 ## Real 4080 CUDA portability gate

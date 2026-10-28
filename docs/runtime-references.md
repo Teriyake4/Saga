@@ -53,5 +53,46 @@ Public headers live in `include/saga/runtime/`; implementations live in
 
 These components are not connected to HTTP generation, do not establish model
 commit semantics, and contain no CUDA synchronization, model math, SSE encoding or
-production model/backend registries. Host-only tests do not qualify Windows/CUDA.
-See `docs/HANDOFF.md` for validation and the next integration boundaries.
+production model/backend registrations or session implementations. Host-only tests
+do not qualify Windows/CUDA. See `docs/HANDOFF.md` for validation and the next
+integration boundaries.
+
+## Neutral model/backend contract slice
+
+`include/saga/runtime/model_contracts.h` adds a minimal M2.1/M2.2 boundary, not a
+complete model schema or generation runtime:
+
+- `ArtifactMetadata` owns declared component identities and sizes. Existing
+  `backend::LogicalWeightBinding::component_identity` selects the source component;
+  `physical_identity` separately identifies a tensor's backing. Multiple logical
+  names may share that physical identity only when component, offset, extent,
+  encoding and shape agree exactly. Different physical identities may occupy
+  disjoint ranges in one component, but not overlapping ranges.
+- `validate_model_contract()` checks structural identities, positive dimensions,
+  bounds, context, declared capability availability and matching program phases.
+  This slice requires nonempty weight bindings and program calls; an empty/no-op
+  program is not a model-contract convention. Kernel requests reuse the existing
+  guards through `backend::validate_request()`. None of these checks verifies actual
+  payload bytes, represented values, model compatibility, fit or qualification.
+- `ModelRegistry` and `BackendRegistry` are independently populated, explicit,
+  startup-only and externally serialized/non-reentrant. They reject null, empty
+  and duplicate registrations and unknown selection; selected shared owners survive
+  registry destruction. Backend selections are mutable so session instantiation is
+  callable. No production model/backend or silent fallback is registered.
+- `IModelDefinition` describes a model and creates an `IModelRuntime` whose current
+  contract covers sequence creation/release, not prefill/decode or typed text results.
+  `IGpuBackend::instantiate()` consumes the startup description and granted resources;
+  `IExecutionSession::execute()` runs only its prebound immutable program. Needed
+  borrowed factory inputs must be copied before return; no per-call program lookup
+  or generic model-program interpretation is established.
+- A bring-up grant permits bounded preparation, not serving. Session execution and
+  sequence release obey the existing physical-fence and resource-retention contracts.
+  Operations/destruction must be serialized, physical work drained, and runtime
+  destroyed before its borrowed session. Completion consumers may outlive both if
+  the implementation retains every needed backing owner in the completion.
+
+`tests/model_contracts_test.cpp` supplies only synthetic implementations. It checks
+metadata rejection/alias boundaries, registry ownership, grant-backed instantiation,
+constructor-failure unwinding and retained storage through the last copied completion.
+It does not implement context planning, inspect-to-approval orchestration, a controller,
+HTTP/SSE integration, real model math or device synchronization.

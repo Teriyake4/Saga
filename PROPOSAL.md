@@ -38,7 +38,7 @@ The server-only scope, configurable context/KV, native MTP, CPU mmproj offload, 
 | Language | C++20 host code, CUDA C++ kernels | Offline Python conversion/research remains acceptable |
 | Hardware | Original RTX 4080 16 GB, SM89; only current GPU target | Other GPUs considered after the 4080 release; no Blackwell implementation work in this plan |
 | Model | Exact pinned Qwen3.8-27B configuration, with text, native MTP, and image capabilities | New classes for other checkpoint geometries |
-| Weights | GSQ 3-bit body, group 128; 4-bit embedding/head | More recipes only when kernels and evaluation exist |
+| Runtime model input | GGUF container with a finite Saga-supported architecture/encoding profile; initial target is GSQ 3-bit body, group 128, and 4-bit embedding/head | Additional profiles only after format, kernels and evaluation are specified |
 | Activations | BF16 or FP16 per validated operator contract; FP32 reductions where needed | A8 routes after independent qualification |
 | Cache/state | Broad independently selectable K/V catalog: F32, BF16/FP16, GGML-style Q8/Q5/Q4/IQ4_NL, and engine-owned group-64 INT8/INT4; FP32 GDN state | FP8/rotated codecs and bounded prefix retention |
 | Workload | One active request; bounded waiting queue | Continuous batching if throughput becomes a goal |
@@ -217,7 +217,7 @@ body storage = 3 + 16/128 = 3.125 bits per weight, before padding/alignment
 
 Validate the source codes, signedness, grouping axis, and scales before applying that formula. “GSQ” describes how quantization was produced; the artifact must still specify its exact numerical and physical encoding.
 
-GGUF `Q3_K` is different: its documented block representation is 3.4375 bits per weight, and model-wide Q3_K recipes can mix tensor types. Do not treat GSQ3, Q3_K_M, IQ3, and raw three-bit packing as interchangeable. A GGUF importer would be a separate representation project. [G1]
+GGUF is the required runtime input container, but that does not make its common quantized tensor types numerically interchangeable with Saga's target. GGUF `Q3_K` has a different block representation (3.4375 bits per weight), and model-wide Q3_K recipes can mix tensor types. GSQ3, Q3_K/Q3_K_M, IQ3, and raw three-bit packing are distinct encodings; compatibility requires the same actual represented values, including scale conversion/rounding. The exact GSQ/Q4 GGUF payload mapping and profile remain unresolved M0/M3 gates. A supported profile may use namespaced metadata and verified standard typed code/scale tensors; do not invent GGUF tensor-type IDs, relabel a payload as Q3_K/IQ3, or imply universal llama.cpp interoperability. [G1]
 
 ## 4. Architecture and module ownership
 
@@ -567,7 +567,7 @@ Pin the block definitions, codebook and reference quantize/dequantize routines a
 
 Blocks/groups run along contiguous channels independently for each `(pool, layer, sequence, token, KV head, K-or-V)`; never share metadata across tokens, heads or K/V. Head dimension 256 has eight GGML blocks of 32, versus four custom groups of 64. Tail/padded lanes are masked and the encoding policy for partial blocks is explicit; the first model's 256-channel heads need no partial block. Reject nonfinite cache inputs as a numerical execution error for every codec. Each descriptor provides block elements/bytes, numerical version, supported dimensions, canonical packing, and exact padded allocation rules; the planner does not assume one scale plane for all formats.
 
-The GGML-style codecs preserve their pinned numerical block contracts and canonical block fixtures. Backend storage may use a separately identified lossless rearrangement for coalescing; document mappings to/from canonical bytes and count padding/metadata. Neither the paged runtime layout nor an entire cache snapshot is automatically binary-compatible with llama.cpp. Supporting these KV formats does not require loading GGUF model weights or changing GSQ3 text weights.
+The GGML-style KV codecs preserve their pinned numerical block contracts and canonical block fixtures. Backend storage may use a separately identified lossless rearrangement for coalescing; document mappings to/from canonical bytes and count padding/metadata. Neither the paged runtime layout nor an entire cache snapshot is automatically binary-compatible with llama.cpp. These KV numerical contracts are independent of the GGUF model-input container: requiring GGUF for model artifacts does not imply that every GGUF weight type, KV backend pairing, or generic ggml execution path is supported, nor does KV codec support change the model's GSQ3 representation.
 
 #### Engine-owned group-64 contracts
 
@@ -629,7 +629,7 @@ This table covers the plain text path only. It is not a complete first-release M
 
 **Allocation rules:** stable weight addresses; bounded activation arena reused by liveness; fixed KV backing with logical paging; no token-loop `cudaMalloc`; no retained full-prompt logits/hidden states unless required. Prefill only needs final-position logits for ordinary generation.
 
-Do not retain multiple permanent Q3 layouts without budgeting the duplicate bytes. Prefer a shared packed layout consumed by several kernels, or a single selected layout. A layer-sized alternate packing is a later experiment, not free memory.
+Do not retain multiple permanent Q3 layouts without budgeting the duplicate bytes. Prefer a shared packed layout consumed by several kernels, or a single selected layout. A layer-sized alternate packing is a later experiment, not free memory. The artifact load/repack peak must additionally account for overlapping mapped or staged GGUF bytes, source-format buffers, native GPU packing, conversion workspace, and any retained cache materialization; report host, pinned-host, and device domains separately. The steady-state ledger includes only retained allocations, but must include all selected native layouts. No full-model BF16 expansion is required.
 
 ### Complete first-release allocation ledger
 
@@ -692,35 +692,39 @@ For non-speculative batch-one decode, a rough weight-streaming lower bound is `t
 
 Speculation can commit several tokens per pass, so committed tokens/s can exceed passes/s. Always report both. Never compare speculative headline generation rates with this plain-decode estimate.
 
-## 7. Artifacts and conversion
+## 7. GGUF runtime artifacts and conversion
 
-Use a versioned inference artifact to separate expensive offline transformation from startup. Start with a narrow converter for the selected GSQ checkpoint; a general import framework is unnecessary.
+GGUF is the required runtime input container. This is a container policy, not support for arbitrary GGUF models, arbitrary tensor encodings, a generic ggml execution engine, or a promise that Saga artifacts are consumable by every llama.cpp build. The first profile is finite and model-specific: the exact supported architecture/geometry, components, tensor mappings, numerical encodings, and backend bindings must be explicitly identified. Unknown architectures, required tensor types, encodings, or unsupported mappings fail before readiness.
 
-The first-release artifact combines the GSQ text weights with compatible pinned MTP and vision/projector components from verified sources. Keep component source revisions and shared embedding/head bindings explicit; do not duplicate shared vocabulary tensors. Vision may remain as a separately checksummed companion file, but loading uses the same validated component contract. A filename such as `mmproj` is not enough to establish its architecture or format.
+The initial target is Qwen3.8-27B GSQ3 body weights plus Q4 embedding/head weights. GSQ3 is not GGUF `Q3_K`, `Q3_K_M`, or `IQ3`; tensor names or a GGUF quantization label do not establish equivalent represented values. The exact GSQ/Q4 mapping and profile are unresolved M0/M3 gates. A profile may use namespaced metadata and verified standard typed code/scale tensors if those can represent the exact payload. Validate the mapping against a pinned GGUF specification and actual reader behavior before freezing it. Do not invent GGUF tensor-type IDs, mislabel payloads as common ggml quantizations, or claim universal interoperability. The unpinned specification link and review boundary are recorded in [docs/artifact-format.md](docs/artifact-format.md).
 
-The manifest should contain:
+Compatible MTP and vision/projector components are also GGUF runtime inputs under the same validated profile, with checksums and explicit logical/shared-tensor bindings. Whether these components reside in the main file or checksummed companion GGUF files—and the exact file count/layout—remains unresolved. Missing required components fail when the corresponding capability is requested. Safetensors and reference checkpoint formats are offline conversion inputs only, not runtime formats. Tokenizer/template/configuration data and checksum/manifest sidecars may accompany the GGUF inputs; sidecars contain no executable artifacts.
 
-- Original model and quantized checkpoint repository revisions and file hashes.
-- Architecture/config hash and a finite supported geometry identifier.
-- Tensor logical names/shapes, numerical encoding, group axis/size, scale dtype, and zero-point semantics.
-- Physical layout identifiers, padded shapes, aligned byte ranges, and checksums.
+The profile metadata must identify:
+
+- GGUF/spec revision and finite architecture/geometry/profile identifiers.
+- Source model and conversion provenance, source revisions, and verified file hashes.
+- Tensor names/shapes, logical roles, required/optional status, numerical encoding, group axis/size, scale dtype/rounding, and zero-point semantics.
+- The exact standard GGUF tensor payload types used by the profile and the interpretation of any namespaced metadata; no undocumented type IDs.
+- Component inventory, checksums, shared embedding/head bindings, and companion-file relationships.
 - Tokenizer, special-token mapping, chat template, generation defaults, and their hashes.
-- Component inventory: text, vision, MTP, draft companions; required/optional status.
-- Converter version and any value-changing conversions, including scale rounding.
+- Converter version, physical layout identifiers, and any value-changing conversion.
 
-Keep logical weight roles separate from physical parents so fused gate/up storage or reordered attention projections do not change model semantics. A per-device packed cache can be generated from the canonical representation and keyed by content hash; it must not be mistaken for a new quantization recipe.
+Keep logical weight roles separate from physical parents so fused gate/up storage or reordered projections do not change model semantics. At startup, read/validate GGUF once, then perform a lossless repack into the selected native backend layout when needed. A content-addressed native packing cache may avoid repeating that repack. Neither is an on-disk GPU packing requirement: the runtime input remains GGUF. Do not parse or repack model files per token. A repack must preserve the declared represented values; if scale conversion changes values, record and separately evaluate it. No full-model BF16 expansion is required.
 
-Conversion pipeline:
+Conversion and loading pipeline:
 
-1. Read pinned source config and metadata; reject unknown geometry/encoding.
-2. Decode small independent fixtures with a scalar reference.
-3. Map source tensors to logical model roles and verify dimensions/order.
-4. Repack codes/scales; avoid dequantize/requantize for a lossless layout transform.
-5. Compare represented values before/after packing. If scale dtype conversion changes values, record and evaluate that separately.
-6. Write aligned sections, manifest, and checksums; use an atomic final-file replacement.
-7. Load through the actual C++ reader and compare operator/model fixtures.
+1. Pin the GGUF specification/revision and actual implementation references before implementation; pin source checkpoint/config metadata and reject unknown geometry or encoding.
+2. Convert supported reference source files offline into the explicit GGUF profile; never treat safetensors/reference formats as runtime alternatives.
+3. Decode small independent fixtures with a scalar reference; verify code interpretation, scale bits/rounding, group axis, padding, tensor names, dimensions, and ordering.
+4. Validate GGUF format magic/version (never trust the `.gguf` suffix), metadata, standard tensor types, required tensors/components, checksums, bounds, offset arithmetic, lengths, versions, alignment requirements, and profile/kernel bindings. Reject unknown required tensor types and unsupported mappings.
+5. Repack codes/scales without dequantize/requantize where the transform is lossless; compare represented values before and after. Record and separately qualify any value-changing conversion.
+6. Atomically write the GGUF runtime input and any manifest/checksum sidecars or content-addressed native packing cache.
+7. Load through the eventual C++ reader and compare operator/model fixtures before readiness.
 
-Loader validation must check offset arithmetic overflow, bounds, tensor lengths, versions, alignments, component availability, and supported kernel bindings before readiness. Never execute code embedded in a model artifact.
+The resource ledger must cover both load/repack peak and steady state: overlapping mapped/staged GGUF files, source buffers, native GPU layouts, conversion workspace, and cache materialization; count host, pinned-host, and device allocations separately. Avoid retaining duplicate native layouts unless planned and budgeted. Cold artifact load/repack time is measured separately from warm startup and request latency. Uncached generation may not hide repeated file parsing or packing. Performance acceptance remains the matched per-case gate in the plan; container choice or packing is not a parity claim.
+
+Never execute code embedded in an artifact. See [docs/artifact-format.md](docs/artifact-format.md) for the concise policy, current unresolved choices, and reference link.
 
 ## 8. State, scheduling, and graphs
 
@@ -887,7 +891,7 @@ max_queued_requests = 16
 
 [model]
 runtime = "qwen3_8_27b"
-artifact = "models/qwen3_8_27b_gsq3.engine"
+artifact = "models/qwen3_8_27b_gsq3.gguf"
 public_name = "qwen3.8-27b-gsq3"
 
 [backend]
@@ -982,7 +986,7 @@ Report:
 
 - TTFT, prompt throughput, decode-only throughput, end-to-end completion time.
 - Per-request inter-token latency p50/p95/p99 and aggregate throughput when concurrency is added.
-- Peak/steady GPU memory, pinned RAM, ordinary RAM, startup and conversion time.
+- Peak/steady GPU memory, pinned RAM, ordinary RAM, startup and conversion time; measure cold GGUF load/repack separately from warm startup and steady-state request latency.
 - Kernel time and full step time; launch gaps, DRAM throughput, L2 behavior, register spills, occupancy.
 - With speculation: proposals, acceptance by depth, committed tokens/round, draft/verify/rollback time, and overall committed tokens/s.
 - With prefix reuse: warm-hit latency, cached bytes, replay cost, and miss latency separately.
@@ -997,7 +1001,7 @@ Freeze the following in M0 before tuning:
 
 - Same represented text/MTP weights, exact K/V numerical contracts and actual A16/A8 dispatch **per phase and operation site**, including accumulation/intermediate-rounding policy. Pin any reference patch needed to obtain an A16 control; a flag alone does not prove its dispatch.
 - Same full/optimized proposal head and vocabulary support, sampling processors/defaults/order, generation/stop rules, prompt token IDs and actual verification width including short/bonus rounds. Explicitly set reference n-gram chaining **off** for matched native MTP.
-- Graph modes/profiles and prefill/verification chunk sizes. Disable prefix reuse and start with empty request state for uncached measurements; warmed kernels/graphs are allowed and are not cached prompts. Record hardware/OS/driver/power conditions and identical timing definitions.
+- Graph modes/profiles and prefill/verification chunk sizes. Disable prefix reuse and start with empty request state for uncached measurements; warmed kernels/graphs are allowed and are not cached prompts. GGUF parsing/repacking must not recur per token or be hidden in the uncached request path. Record hardware/OS/driver/power conditions and identical timing definitions.
 
 Report **equal-configuration**, **quality-matched system**, and **best-system** results separately. A8-enabled reference prefill, an unmatched cache codec or a different draft head cannot silently satisfy an equal-configuration A16 gate. Additional best-system results cannot replace a frozen mandatory case. If the reference is unavailable on native Windows, freeze an explicitly **Linux-only performance-qualification scope**; our own feature/quality/memory/lifecycle tests remain mandatory on both OSes, but cross-OS measurements establish no Windows reference parity.
 
@@ -1010,7 +1014,7 @@ The detailed tasks and dependency graph live in [IMPLEMENTATION_PLAN.md](IMPLEME
 | M0 — Freeze evidence | Pinned weights/components/tokenizer, reference dispatch, llama.cpp codec contracts, fixed workloads and quality policy | Reproducible baseline; no missing evidence silently declared matched |
 | M1 — Portable skeleton | CMake, RAII, configuration and model-free server; representative CUDA portability probe | Linux + native Windows lifecycle tests and real-4080 kernel/toolchain checks |
 | M2 — Contracts/planning | Model/backend/kernel interfaces, allocation ledger and approval stages | Static-candidate tests; bounded bring-up grants distinct from reconciled readiness |
-| M3 — Artifact/frontend | Narrow converter/reader, component binding, scalar fixtures, exact template/tokenizer | Encoding/frontend checks; component byte inventory and preregistered quality evidence |
+| M3 — GGUF artifact/frontend | Narrow supported-profile GGUF reader and offline converter, component binding, scalar fixtures, exact template/tokenizer | Verified encoding/frontend checks; component byte inventory and preregistered quality evidence |
 | M4 — Baseline operators | A16 Q3/Q4 projections, full attention and GDN | Independent math/state gates |
 | M5/M6 — Correct API text | Eager text runtime and OpenAI HTTP/SSE lifecycle | First visible checkpoint: correctness, GSQ/original quality, real clients and both-OS resource/lifecycle tests; not the full release |
 | M7a — Core KV | Two-byte references, engine-owned group-64 codecs, explicit/auto capacity | Core codec quality and memory profiles |
@@ -1047,7 +1051,7 @@ Across model classes, MTP, vision, MoE, and offload are declared capabilities wi
 
 | Risk / decision | Resolution |
 |---|---|
-| Q3 ambiguity | Default this proposal to GSQ3; change the plan if an existing GGUF Q3 file is the actual requirement |
+| GGUF/profile ambiguity | GGUF is the required runtime container; exact supported architecture/encoding profile and lossless GSQ/Q4 payload mapping remain M0/M3 gates |
 | Inaccurate model reproduction | Freeze exact config/resources and layer/state fixtures before fusion |
 | Fits weights but not execution | Manifest-based budget plus measured workspace/graph peak before readiness |
 | Q3 unpack slower than Q4 | Compare end-to-end latency at matched quality and feasible context; density alone is not a speed guarantee |

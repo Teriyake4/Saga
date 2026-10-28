@@ -118,6 +118,12 @@ run command or native reference result has been frozen. Obtain evidence per
 phase and operation site before freezing a comparable case; patch only if needed
 and record exact patch bytes/hash and build/run commands.
 
+### GGUF format reference: not yet pinned or verified
+
+Saga's runtime input policy is GGUF, but the existing source lock does **not** establish a GGUF model reader, writer, converter, or GSQ/Q4 interoperability. The pinned llama.cpp files below were selected for GGML block-32 KV numerical contracts; they are not evidence that arbitrary GGUF model tensors or Saga's GSQ profile are supported.
+
+Unpinned design reference for future M0/M3 work: https://github.com/ggml-org/ggml/blob/master/docs/gguf.md. This reference was not retrieved, hashed, or treated as a normative pinned revision in this snapshot. Before implementation, pin the specification revision and any reader/converter source actually used, preserve retrieval/hash evidence separately, and verify the exact supported architecture/encoding profile and payload mapping. Do not modify historical retrieval evidence to imply prior verification.
+
 ### llama.cpp numerical-source provenance
 
 Lock `common/arg.cpp`, `ggml/src/ggml-common.h`, `ggml/src/ggml-quants.c`,

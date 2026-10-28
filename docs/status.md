@@ -8,6 +8,34 @@ active build/qualification target; Linux work is deferred at the user's request.
 The full feature scope and 95% throughput / 110% uncached-TTFT thresholds remain
 unchanged, and no Windows-only result implies eventual cross-platform completion.
 
+## M0 / M1 / M2 milestone gates
+
+| Milestone | Status | Implemented evidence | Outstanding exit-gate work |
+|---|---|---|---|
+| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned reference-source and model-metadata retrieval, hashes/licenses where available, reference/quality manifests and policy scaffolding | Actual original-4080 environment, reference build/run and observed precision dispatch, verified component/weight/tokenizer bytes, frozen matched suite, independent fixtures and approved quality budgets; Switchyard reuse remains license-blocked |
+| **M1 - foundation and server shell** | **Partial; host shell implemented** | Model-free server, configuration/security hardening, platform adapters, host build/install scripts and presets; macOS host validation | Native Windows/MSVC Debug/Release and installed-package evidence; real original-4080 CUDA compile/device-link/run (probe source exists only); full platform/device ownership and qualification gates. Linux qualification remains deferred |
+| **M2 - contracts and resource planning** | **Partial; neutral groundwork implemented** | Kernel contracts/selection, allocation ledger and candidate/grant/reconcile/approval types, runtime primitives, minimal model/backend/session contracts and static registries, synthetic composition tests | Complete metadata-driven component calculator, explicit/auto context planning, integrated startup/readiness and failure orchestration, concrete model/state/frontend and generation-step contracts, production sessions/physical fences, and remaining integration qualification/tuning |
+
+The latest implementation slice passed **18/18 host test groups** on macOS in
+Debug, Release, ASan/UBSan and TSan, plus 20 repeated TSan `model_contracts` runs.
+These results do not close Windows, CUDA, model-quality, fit or performance gates.
+No milestone percentage or full M0/M1/M2 completion is claimed.
+
+## Runtime model format decision (planned)
+
+**GGUF is the required runtime input container**, not a proprietary `.engine` or
+`.ninfer` model file. This is a documentation requirement, not implemented loader
+support. The initial architecture/weight encodings remain narrowly scoped; GSQ3
+is not interchangeable with GGUF Q3_K/IQ3 recipes. The exact verified GSQ/Q4 GGUF
+profile and source/specification pins remain M0/M3 work. See
+[artifact-format.md](artifact-format.md).
+
+GGUF does not dictate the GPU execution layout: bounded one-time or cached native
+repacking may preserve the declared represented values, with all transient and
+steady-state memory accounted for. It does not establish NInfer parity or waive
+any existing performance/quality gate. No GGUF reader/writer/converter, universal
+GGUF-model support or new model/device implementation is supplied by this decision.
+
 ## Implemented and locally exercised
 
 | Area | Present implementation | Evidence/limits |
@@ -20,18 +48,48 @@ unchanged, and no Windows-only result implies eventual cross-platform completion
 | KV metadata | Eleven canonical formats, alias normalization, exact block sizes and checked main-cache page/layout sizing | All proposal main-cache byte fixtures; no quantizer/attention/verification execution support |
 | Platform | Separate `saga_platform` target selects shared + native Windows or reusable POSIX sources; mapping, Unicode argv/environment and RAII shutdown adapters | macOS tests include >4-GiB windows, Unicode/environment bounds and prior signal restoration; Windows runtime unverified, Linux qualification deferred |
 | Runtime primitives | Resource-retaining completions; bounded execution worker/reserved cleanup; generation-tagged sequence retirement; bounded single-active admission and committed-byte output | Unit and cross-component tests; owner-thread contracts enforced where specified; no HTTP generation integration or device synchronization |
+| Model/backend contracts | Structural artifact/model/program validation, distinct component/tensor identities, exact tied-weight aliases, neutral session/runtime interfaces and independent owning static registries | Synthetic grant-backed composition and lifetime tests; no production registrations, typed generation-step results, startup orchestration or readiness integration |
 | CUDA probe | Real `cp.async` and BF16 WMMA result checks, original-4080 identity, SM89 image/occupancy queries and JSON evidence | Source only; **not compiled, device-linked or run** |
 | Source locks | Five pinned reference commits, selected implementation/build/license hashes, original/GSQ model metadata and actual failed probes | Partial source verification; no reference binary, weights or matched benchmark |
 
-The M2 layer is intentionally incomplete: production model/backend registries and
-sessions, automatic context search and liveness-based scratch optimization are not
-present. Completion, logical deferred retirement and reserved worker cleanup now
+The M2 layer is intentionally incomplete: neutral model/backend registry and
+session interfaces exist, but production registrations/session implementations,
+complete model/state/frontend schemas, automatic context search and liveness-based
+scratch optimization are not present. Completion, logical deferred retirement and reserved worker cleanup now
 exist as neutral primitives; a future backend must supply physical-work fences.
 Memory accounting conservatively sums unique peaks. Real backends must allocate
 through the granted contract, supply truthful measurements and retain leases;
 the host calculator does not intercept driver allocations or prove fit itself.
 
-## Current model/device-neutral runtime increment
+## Current neutral model-contract increment
+
+- Added `include/saga/runtime/model_contracts.h`, its implementation and the
+  `model_contracts` test group as one bounded M2.1/M2.2 slice. Existing model types
+  and kernel guards are reused; M2 remains partial.
+- Logical bindings now distinguish artifact-component identity from physical tensor
+  identity. Exact aliases are accepted; conflicting aliases, overlapping distinct
+  tensors, invalid ranges/enums/dimensions/context and unavailable requested
+  capabilities are rejected. Bounds and overlap checks avoid addition overflow.
+- `backend::validate_request()` shares structural kernel checks with both registry
+  resolution and model validation. No payload packing or numerical quality is proven.
+- Independent model/backend registries retain selected owners and have no default
+  registrations or fallback. Sessions bind their program at instantiation rather
+  than receiving a generic call list on each execution. Factory inputs are borrowed
+  synchronously; callers must drain physical work and destroy runtime before session.
+- Test-only implementations exercise registry-selected instantiation, grant-backed
+  allocation, constructor-failure unwinding, sequence lifetime, copied descriptions,
+  and resource retention after producer/runtime/session destruction until the last
+  completion consumer releases its handle. This is not startup/readiness orchestration.
+- GPT6 Luna implemented the slice; two independent Luna reviewers checked API/lifetime
+  and metadata/validation paths, followed by fixes and re-reviews with no concrete
+  blockers. This is not a proof of correctness or native Windows qualification.
+- Final macOS arm64 builds and **18/18 CTest groups passed** in Debug, Release,
+  ASan/UBSan and TSan; `model_contracts` also passed 20 repeated TSan runs.
+  Prior installation evidence below was not rerun for this slice.
+- Stop after this one step pending user approval. No planner, startup orchestrator,
+  controller, HTTP generation, model inspection, kernels or GPU tests were added.
+
+## Prior model/device-neutral runtime increment
 
 - Added `saga_runtime`: `completion`, `execution_worker`, `sequence_slots`,
   `admission` and `output_buffer`, with six new CTest groups including integration.
@@ -206,14 +264,17 @@ final online audit reverified 96 hashes; the eight probe paths remained 404.
    frozen and an empty suite is not a pass.
 3. **M0.3 / M3:** verify actual original/GSQ/MTP/vision/tokenizer inventories,
    checksums, packing/scale contracts, shared bindings and component compatibility.
+   Pin GGUF specification/reader inputs and verify an exact GSQ/Q4 GGUF mapping;
+   the format decision is not encoding interoperability or byte-level verification.
    Retrieved metadata/publisher claims do not satisfy byte-level verification.
 4. **M0.6–M0.7:** produce independent encoding/layer/state fixtures and original-BF16
    baseline evidence; review dataset splits, metrics, budgets, confidence and
    sample sizes before affected conversion/optimization. Null budgets stay blocked.
-5. **M2:** finish model/backend session and registry contracts, metadata-driven
-   startup orchestration and automatic context planning, composing the new neutral
-   ownership primitives. Keep synthetic fixtures test-only. Proceed to M3's narrow
-   converter/reader and exact frontend only after the model/device work boundary is
+5. **M2:** build bounded context planning and metadata-driven startup orchestration
+   on the neutral contracts/registries and ownership primitives. Complete concrete
+   model/state/frontend and generation-step contracts only from verified inputs.
+   Keep synthetic fixtures test-only. Proceed to M3's narrow GGUF converter/reader
+   and exact frontend only after the model/device work boundary is
    approved and source inputs are sufficiently verified. No silent fake backend or
    arbitrary-model importer.
 
