@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "dependency": "cpp-httplib",
+      "version": "v0.28.0",
+      "path": "third_party/cpp-httplib/httplib.h",
+      "url": "https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.28.0/httplib.h",
+      "upstream_sha256": "9e5cafaa227dad5c10e837990a736cecaff03258f50d37067cedeee1dba5d344",
+      "upstream_bytes": 427311,
+      "local_patches": ["third_party/patches/cpp-httplib-v0.28.0-saga-hardening.patch"],
+      "sha256": "cdefe1b08afb6c695e59fc41822436f0ee27f3efa6cf5136dd184797a1a36309",
+      "bytes": 430901
+    },
+    {
+      "dependency": "cpp-httplib",
+      "version": "v0.28.0",
+      "path": "third_party/cpp-httplib/LICENSE",
+      "url": "https://raw.githubusercontent.com/yhirose/cpp-httplib/v0.28.0/LICENSE",
+      "sha256": "4b45cbe16d7b71b89ae6127e26e0d90a029198ca5e958ad8e3d0b8bbed364d8b",
+      "bytes": 1075
+    },
+    {
+      "dependency": "json",
+      "version": "v3.11.3",
+      "path": "third_party/json/json.hpp",
+      "url": "https://raw.githubusercontent.com/nlohmann/json/v3.11.3/single_include/nlohmann/json.hpp",
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6",
+      "bytes": 919975
+    },
+    {
+      "dependency": "json",
+      "version": "v3.11.3",
+      "path": "third_party/json/LICENSE",
+      "url": "https://raw.githubusercontent.com/nlohmann/json/v3.11.3/LICENSE.MIT",
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+      "bytes": 1076
+    },
+    {
+      "dependency": "tomlplusplus",
+      "version": "v3.4.0",
+      "path": "third_party/tomlplusplus/toml.hpp",
+      "url": "https://raw.githubusercontent.com/marzer/tomlplusplus/v3.4.0/toml.hpp",
+      "sha256": "6b5172ad4dd6519aec67b919181fa7a38a2234131e5b2afa232dfe444819783e",
+      "bytes": 485931
+    },
+    {
+      "dependency": "tomlplusplus",
+      "version": "v3.4.0",
+      "path": "third_party/tomlplusplus/LICENSE",
+      "url": "https://raw.githubusercontent.com/marzer/tomlplusplus/v3.4.0/LICENSE",
+      "sha256": "529bc3900a9571e49db285b0df432397e70b881cc3bf48de6667ae74ff4b06d8",
+      "bytes": 1094
+    }
+  ],
+  "patches": [
+    {
+      "dependency": "cpp-httplib",
+      "path": "third_party/patches/cpp-httplib-v0.28.0-saga-hardening.patch",
+      "sha256": "398da6ec3bd3518cf52aa169b460b6982f2751b00f7ac8ac30104f524f791638",
+      "bytes": 9415
+    }
+  ]
+}

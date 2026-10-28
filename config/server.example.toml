@@ -1,0 +1,17 @@
+# Runnable M1 host-only profile. No model is loaded; /readyz always returns 503.
+# Model-specific settings belong in a separate one-profile model INI:
+#   saga-server --config server.example.toml --model-config model.example.ini
+# Use --check-config for static validation only; actual model loading is not implemented.
+[server]
+host = "127.0.0.1"
+port = 8080
+http_workers = 4
+max_pending_connections = 32
+max_active_requests = 1
+max_queued_requests = 16 # reserved generation-admission setting, not an HTTP queue
+max_body_bytes = 1048576
+io_timeout_seconds = 2
+api_key_env = "SAGA_API_KEY" # secret comes only from environment; RFC 6750 token, <=4096 bytes; never logged
+
+# Without --model-config, safe model-free Config defaults apply.
+# Legacy TOML model/backend/context/KV sections remain accepted for compatibility.

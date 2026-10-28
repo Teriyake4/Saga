@@ -1,0 +1,255 @@
+--- a/third_party/cpp-httplib/httplib.h
++++ b/third_party/cpp-httplib/httplib.h
+@@ -293,6 +293,7 @@
+ #include <iomanip>
+ #include <iostream>
+ #include <list>
++#include <limits>
+ #include <map>
+ #include <memory>
+ #include <mutex>
+@@ -4711,12 +4712,9 @@
+ 
+     if (!detail::fields::is_field_value(val)) { return false; }
+ 
+-    if (case_ignore::equal(key, "Location") ||
+-        case_ignore::equal(key, "Referer")) {
+-      fn(key, val);
+-    } else {
+-      fn(key, decode_path_component(val));
+-    }
++    // Saga local hardening: header values are not URI components; preserve the
++    // raw value after the existing OWS trimming and field-value validation.
++    fn(key, val);
+ 
+     return true;
+   }
+@@ -4842,24 +4840,115 @@
+   char buf[bufsiz];
+ 
+   stream_line_reader line_reader(strm, buf, bufsiz);
++  // Saga local hardening: compare complete line lengths so embedded NUL bytes
++  // cannot make a CRLF prefix look like the whole separator/terminator line.
++  const auto is_crlf_line = [&]() {
++    return line_reader.size() == 2 &&
++           memcmp(line_reader.ptr(), "\r\n", 2) == 0;
++  };
+ 
+   if (!line_reader.getline()) { return ReadContentResult::Error; }
+ 
+-  unsigned long chunk_len;
++  // Saga local hardening: parse the bounded chunk-size line completely instead
++  // of accepting strtoul's permissive prefix and platform-dependent width.
++  const auto is_chunk_token_char = [](unsigned char c) {
++    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') ||
++           (c >= 'a' && c <= 'z') || c == '!' || c == '#' || c == '$' ||
++           c == '%' || c == '&' || c == '\'' || c == '*' || c == '+' ||
++           c == '-' || c == '.' || c == '^' || c == '_' || c == '`' ||
++           c == '|' || c == '~';
++  };
++
++  size_t chunk_len = 0;
+   size_t total_len = 0;
+   while (true) {
+-    char *end_ptr;
+-
+-    chunk_len = std::strtoul(line_reader.ptr(), &end_ptr, 16);
+-
+-    if (end_ptr == line_reader.ptr()) { return ReadContentResult::Error; }
+-    if (chunk_len == ULONG_MAX) { return ReadContentResult::Error; }
++    if (!line_reader.end_with_crlf()) { return ReadContentResult::Error; }
++
++    auto p = line_reader.ptr();
++    const auto end = p + line_reader.size() - 2;
++    size_t digits = 0;
++    chunk_len = 0;
++    while (p < end) {
++      const auto c = static_cast<unsigned char>(*p);
++      size_t digit;
++      if (c >= '0' && c <= '9') {
++        digit = c - '0';
++      } else if (c >= 'a' && c <= 'f') {
++        digit = c - 'a' + 10;
++      } else if (c >= 'A' && c <= 'F') {
++        digit = c - 'A' + 10;
++      } else {
++        break;
++      }
++
++      if (chunk_len > ((std::numeric_limits<size_t>::max)() - digit) / 16) {
++        return ReadContentResult::Error;
++      }
++      chunk_len = chunk_len * 16 + digit;
++      ++p;
++      ++digits;
++    }
++    if (!digits) { return ReadContentResult::Error; }
++
++    const auto skip_bws = [&]() {
++      while (p < end && (*p == ' ' || *p == '\t')) { ++p; }
++    };
++    const auto parse_token = [&]() {
++      const auto token_start = p;
++      while (p < end && is_chunk_token_char(static_cast<unsigned char>(*p))) {
++        ++p;
++      }
++      return p != token_start;
++    };
++
++    while (p < end) {
++      skip_bws();
++      if (p == end || *p++ != ';') { return ReadContentResult::Error; }
++      skip_bws();
++      if (!parse_token()) { return ReadContentResult::Error; }
++      const auto name_end = p;
++      skip_bws();
++      if (p == end && p != name_end) { return ReadContentResult::Error; }
++
++      if (p < end && *p == '=') {
++        ++p;
++        skip_bws();
++        if (p == end) { return ReadContentResult::Error; }
++
++        if (*p == '"') {
++          ++p;
++          bool closed = false;
++          while (p < end) {
++            const auto c = static_cast<unsigned char>(*p++);
++            if (c == '"') {
++              closed = true;
++              break;
++            }
++            if (c == '\\') {
++              if (p == end) { return ReadContentResult::Error; }
++              const auto escaped = static_cast<unsigned char>(*p++);
++              if (!(escaped == '\t' || escaped == ' ' ||
++                    (escaped >= 0x21 && escaped <= 0x7e) || escaped >= 0x80)) {
++                return ReadContentResult::Error;
++              }
++            } else if (!(c == '\t' || c == ' ' || c == '!' ||
++                         (c >= '#' && c <= '[') || (c >= ']' && c <= '~') ||
++                         c >= 0x80)) {
++              return ReadContentResult::Error;
++            }
++          }
++          if (!closed) { return ReadContentResult::Error; }
++        } else if (!parse_token()) {
++          return ReadContentResult::Error;
++        }
++      }
++    }
+ 
+     if (chunk_len == 0) { break; }
+ 
+-    // Check if adding this chunk would exceed the payload limit
++    // Check if adding this chunk would exceed the payload limit.
+     if (total_len > payload_max_length ||
+-        payload_max_length - total_len < chunk_len) {
++        chunk_len > payload_max_length - total_len) {
+       return ReadContentResult::PayloadTooLarge;
+     }
+ 
+@@ -4871,28 +4960,18 @@
+ 
+     if (!line_reader.getline()) { return ReadContentResult::Error; }
+ 
+-    if (strcmp(line_reader.ptr(), "\r\n") != 0) {
+-      return ReadContentResult::Error;
+-    }
++    if (!is_crlf_line()) { return ReadContentResult::Error; }
+ 
+     if (!line_reader.getline()) { return ReadContentResult::Error; }
+   }
+ 
+   assert(chunk_len == 0);
+ 
+-  // NOTE: In RFC 9112, '7.1 Chunked Transfer Coding' mentions "The chunked
+-  // transfer coding is complete when a chunk with a chunk-size of zero is
+-  // received, possibly followed by a trailer section, and finally terminated by
+-  // an empty line". https://www.rfc-editor.org/rfc/rfc9112.html#section-7.1
+-  //
+-  // In '7.1.3. Decoding Chunked', however, the pseudo-code in the section
+-  // does't care for the existence of the final CRLF. In other words, it seems
+-  // to be ok whether the final CRLF exists or not in the chunked data.
+-  // https://www.rfc-editor.org/rfc/rfc9112.html#section-7.1.3
+-  //
+-  // According to the reference code in RFC 9112, cpp-httplib now allows
+-  // chunked transfer coding data without the final CRLF.
+-  if (!line_reader.getline()) { return ReadContentResult::Success; }
++  // Saga local hardening: the zero-size chunk must be followed by a CRLF-
++  // terminated trailer section, including its final empty line.
++  if (!line_reader.getline() || !line_reader.end_with_crlf()) {
++    return ReadContentResult::Error;
++  }
+ 
+   // RFC 7230 Section 4.1.2 - Headers prohibited in trailers
+   thread_local case_ignore::unordered_set<std::string> prohibited_trailers = {
+@@ -4931,7 +5010,8 @@
+   }
+ 
+   size_t trailer_header_count = 0;
+-  while (strcmp(line_reader.ptr(), "\r\n") != 0) {
++  while (!is_crlf_line()) {
++    if (!line_reader.end_with_crlf()) { return ReadContentResult::Error; }
+     if (line_reader.size() > CPPHTTPLIB_HEADER_MAX_LENGTH) {
+       return ReadContentResult::Error;
+     }
+@@ -4945,13 +5025,18 @@
+     constexpr auto line_terminator_len = 2;
+     auto end = line_reader.ptr() + line_reader.size() - line_terminator_len;
+ 
+-    parse_header(line_reader.ptr(), end,
+-                 [&](const std::string &key, const std::string &val) {
+-                   if (declared_trailers.find(key) != declared_trailers.end()) {
+-                     x.trailers.emplace(key, val);
+-                     trailer_header_count++;
+-                   }
+-                 });
++    // Saga local hardening: count every valid trailer, including ignored
++    // undeclared/prohibited fields, against the trailer header limit.
++    if (!parse_header(line_reader.ptr(), end,
++                      [&](const std::string &key, const std::string &val) {
++                        trailer_header_count++;
++                        if (declared_trailers.find(key) !=
++                            declared_trailers.end()) {
++                          x.trailers.emplace(key, val);
++                        }
++                      })) {
++      return ReadContentResult::Error;
++    }
+ 
+     if (!line_reader.getline()) { return ReadContentResult::Error; }
+   }
+@@ -8091,14 +8176,32 @@
+ #endif
+ 
+       if (sock == INVALID_SOCKET) {
++        // Saga local hardening: retry callbacks poll cancellation on the
++        // listener thread; after stop closes the socket, loop condition exits.
++#if defined _WIN32
++        const auto accept_error = WSAGetLastError();
++        if (accept_error == WSAEMFILE) {
++          // Try to accept new connections after a short sleep.
++          std::this_thread::sleep_for(std::chrono::microseconds{1});
++          task_queue->on_idle();
++          continue;
++        } else if (accept_error == WSAEINTR ||
++                   accept_error == WSAEWOULDBLOCK) {
++          task_queue->on_idle();
++          continue;
++        }
++#else
+         if (errno == EMFILE) {
+           // The per-process limit of open file descriptors has been reached.
+           // Try to accept new connections after a short sleep.
+           std::this_thread::sleep_for(std::chrono::microseconds{1});
++          task_queue->on_idle();
+           continue;
+         } else if (errno == EINTR || errno == EAGAIN) {
++          task_queue->on_idle();
+           continue;
+         }
++#endif
+         if (svr_sock_ != INVALID_SOCKET) {
+           detail::close_socket(svr_sock_);
+           ret = false;
