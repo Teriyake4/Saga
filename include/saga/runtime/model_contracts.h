@@ -46,22 +46,27 @@ struct ModelDescription {
 class IExecutionSession {
 public:
     virtual ~IExecutionSession() = default;
-    // Enqueued work must retain every accessed resource until its physical fence and
-    // consumer release; Completion abandonment/cancellation is not a physical fence.
-    virtual Completion execute(const backend::ModelProgram&, ResourceLease resources) = 0;
+    // execute runs only the immutable program prebound at backend instantiation.
+    // Enqueued work retains resources until physical settlement AND consumer release;
+    // cancellation/abandonment is not a fence. Caller serializes calls/destruction and
+    // drains physical work before destruction. Session outlives its runtime.
+    virtual Completion execute(ResourceLease resources) = 0;
 };
 class IModelRuntime {
 public:
     virtual ~IModelRuntime() = default;
     virtual SequenceHandle create_sequence(std::uint64_t context_tokens) = 0;
+    // Invalidates the logical handle immediately; physical sequence storage is reclaimed
+    // only after this completion and all dependent work have physically settled.
     virtual Completion release_sequence(SequenceHandle) = 0;
 };
 class IGpuBackend {
 public:
     virtual ~IGpuBackend() = default;
     virtual backend::DeviceCaps capabilities() const = 0;
-    // Instantiation is preparation-only and must consume allocations owned by the
-    // supplied bring-up grant. A grant never constitutes serving approval.
+    // Preparation/calibration only, never serving approval. Must consume allocations
+    // owned by the grant, validate and resolve the description, and copy every needed
+    // borrowed input before returning the session with that immutable program prebound.
     virtual std::unique_ptr<IExecutionSession> instantiate(const ModelDescription&,
                                                             memory::BringupGrant&) = 0;
 };
@@ -69,8 +74,9 @@ class IModelDefinition {
 public:
     virtual ~IModelDefinition() = default;
     virtual ModelDescription describe(const ArtifactMetadata&, const RuntimeOptions&) const = 0;
-    // Owner-thread and destruction requirements are implementation-defined; callers
-    // must serialize operations/destruction unless an implementation states otherwise.
+    // Factories consume borrowed metadata/options/description synchronously and must
+    // copy anything needed after return. Caller serializes operations/destruction;
+    // runtime destruction precedes session destruction, after physical work drains.
     virtual std::unique_ptr<IModelRuntime> create_runtime(const ModelDescription&,
                                                            IExecutionSession&) const = 0;
 };
@@ -87,10 +93,10 @@ private:
 };
 class BackendRegistry {
 public:
-    void add(std::string id, std::shared_ptr<const IGpuBackend> backend);
-    std::shared_ptr<const IGpuBackend> find(const std::string& id) const;
+    void add(std::string id, std::shared_ptr<IGpuBackend> backend);
+    std::shared_ptr<IGpuBackend> find(const std::string& id) const;
 private:
-    struct Entry { std::string id; std::shared_ptr<const IGpuBackend> value; };
+    struct Entry { std::string id; std::shared_ptr<IGpuBackend> value; };
     std::vector<Entry> entries_;
 };
 

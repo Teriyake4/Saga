@@ -108,14 +108,7 @@ std::optional<std::string> format_error(const Contract& c, const PhysicalContrac
         return "byte strides must be positive";
     return std::nullopt;
 }
-std::optional<std::string> request_error(const KernelRequest& r, const DeviceCaps& caps) {
-    if (auto error = format_error(r, r.physical)) return error;
-    if (r.shape.outputs == 0 || r.shape.inputs == 0 || r.shape.tokens == 0) return "shape/token width must be positive";
-    if (!memory::is_power_of_two(r.workspace_alignment)) return "workspace alignment must be a power of two";
-    if (!valid_device_kind(caps.kind)) return "unknown device kind";
-    if (caps.architecture.empty()) return "device architecture must be nonempty";
-    return std::nullopt;
-}
+
 std::optional<std::string> descriptor_error(const KernelDescriptor& d) {
     if (auto error = format_error(d, d.required_physical)) return error;
     if (d.id.empty()) return "empty implementation ID";
@@ -129,9 +122,19 @@ std::optional<std::string> descriptor_error(const KernelDescriptor& d) {
 }
 } // namespace
 
+std::optional<std::string> validate_request(const KernelRequest& request) {
+    if (auto error = format_error(request, request.physical)) return error;
+    if (request.shape.outputs == 0 || request.shape.inputs == 0 || request.shape.tokens == 0)
+        return "shape/token width must be positive";
+    if (!memory::is_power_of_two(request.workspace_alignment)) return "workspace alignment must be a power of two";
+    return std::nullopt;
+}
+
 std::optional<std::string> incompatibility(const KernelDescriptor& d, const KernelRequest& r,
                                          const DeviceCaps& caps) {
-    if (auto error = request_error(r, caps)) return "invalid kernel request: " + *error;
+    if (auto error = validate_request(r)) return "invalid kernel request: " + *error;
+    if (!valid_device_kind(caps.kind)) return "invalid kernel request: unknown device kind";
+    if (caps.architecture.empty()) return "invalid kernel request: device architecture must be nonempty";
     if (auto error = descriptor_error(d)) return "invalid kernel descriptor: " + *error;
     if (d.operation != r.operation) return "operation";
     if (d.phase != r.phase) return "phase";
@@ -208,8 +211,10 @@ void KernelRegistry::add(std::shared_ptr<const IKernelImplementation> implementa
 
 PreparedKernel KernelRegistry::resolve(const KernelRequest& request, const DeviceCaps& device,
                                       const PairTuningProfile* preferences) const {
-    if (auto error = request_error(request, device))
+    if (auto error = validate_request(request))
         throw std::invalid_argument("invalid kernel request: " + *error);
+    if (!valid_device_kind(device.kind)) throw std::invalid_argument("invalid kernel request: unknown device kind");
+    if (device.architecture.empty()) throw std::invalid_argument("invalid kernel request: device architecture must be nonempty");
     std::vector<const Entry*> compatible;
     std::ostringstream rejected;
     for (const auto& entry : entries_) {

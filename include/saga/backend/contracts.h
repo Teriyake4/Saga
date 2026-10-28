@@ -101,6 +101,8 @@ struct KernelDescriptor {
 
 // Rejects malformed requests/descriptors before comparing guards, including unknown enums.
 // Returns the first diagnostic. supports() may narrow, never widen the explicit contract.
+// Structural validation independent of device availability; does not rank or bind a kernel.
+std::optional<std::string> validate_request(const KernelRequest&);
 std::optional<std::string> incompatibility(const KernelDescriptor&, const KernelRequest&, const DeviceCaps&);
 std::string describe(const KernelRequest&, const DeviceCaps&);
 
@@ -179,6 +181,9 @@ struct LogicalWeightBinding {
     Shape shape;
     std::uint64_t byte_offset{0};
     std::uint64_t byte_extent{0};
+    // Artifact component identity is distinct from physical_identity, which identifies
+    // tensor backing and may be shared by exact aliases.
+    std::string component_identity;
 };
 struct ModelSpec {
     std::string model_identity;
