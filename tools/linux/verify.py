@@ -6,16 +6,17 @@ import argparse
 import datetime
 import importlib.util
 import json
-
+import os
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 PRESETS = {
     "linux-gcc-debug": {"compiler": "g++", "build_type": "Debug", "sanitizers": False, "thread_sanitizer": False},
@@ -124,6 +125,19 @@ def _cmake_set(text: str, key: str) -> str:
     raise RuntimeError(f"missing generated CMake field: {key}")
 
 
+def run_bounded(argv: list[str], cwd: Path, stdout, stderr, timeout: int) -> int:
+    process = subprocess.Popen(argv, cwd=cwd, stdout=stdout, stderr=stderr, start_new_session=True)
+    try:
+        return process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+        raise
+
+
 def validate_ctest(expected_json: Path, junit_path: Path) -> dict[str, Any]:
     expected_data = json.loads(expected_json.read_text(encoding="utf-8"))
     expected = [test["name"] for test in expected_data.get("tests", [])]
@@ -194,9 +208,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"RUN {label}: {' '.join(argv)}", flush=True)
         try:
             with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
-                result = subprocess.run(argv, cwd=cwd, stdout=stdout, stderr=stderr,
-                                        timeout=args.timeout_seconds, check=False)
-            record["exit_code"] = result.returncode
+                record["exit_code"] = run_bounded(argv, cwd, stdout, stderr, args.timeout_seconds)
         except subprocess.TimeoutExpired:
             record["timeout"] = True
             save()
@@ -206,8 +218,8 @@ def run(args: argparse.Namespace) -> int:
             save()
             raise RuntimeError(f"{label} could not start: {exc}") from exc
         save()
-        if result.returncode:
-            raise RuntimeError(f"{label} failed with exit code {result.returncode}")
+        if record["exit_code"]:
+            raise RuntimeError(f"{label} failed with exit code {record['exit_code']}")
 
     snapshot = None
     before = None
@@ -224,6 +236,7 @@ def run(args: argparse.Namespace) -> int:
         missing = [name for name, path in tools.items() if not path]
         if missing:
             raise RuntimeError("missing required tool(s): " + ", ".join(missing))
+        tools = cast(dict[str, str], tools)
         selected = Path(tools[compiler_name]).resolve()
         for name, path in tools.items():
             command("version-" + name, [path, "--version"], source)

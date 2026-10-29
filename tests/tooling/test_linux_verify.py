@@ -120,6 +120,10 @@ class RunnerHarness(unittest.TestCase):
                     path.write_text("", encoding="utf-8")
         return type("Result", (), {"returncode": 0})()
 
+    def fake_bounded(self, argv, cwd, stdout, stderr, timeout):
+        result = self.fake_run(argv, cwd=cwd, stdout=stdout, stderr=stderr, timeout=timeout)
+        return result.returncode
+
     @property
     def output_dir(self):
         return next(self.output.iterdir())
@@ -137,7 +141,7 @@ class RunnerHarness(unittest.TestCase):
              patch.object(verify.platform, "platform", return_value="Linux-test"), \
              patch.object(verify.platform, "machine", return_value="aarch64"), \
              patch.object(verify.platform, "release", return_value="test-kernel"), \
-             patch.object(verify.subprocess, "run", side_effect=self.fake_run):
+             patch.object(verify, "run_bounded", side_effect=self.fake_bounded):
             return verify.run(self.args)
 
     def evidence(self):
@@ -351,6 +355,38 @@ class LinuxVerifyTests(unittest.TestCase):
             report.write_text('<testsuite><testcase name="alpha"/></testsuite>', encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "mismatch"):
                 verify.validate_ctest(expected, report)
+
+    @unittest.skipUnless(verify.sys.platform.startswith("linux"), "Linux process-group regression uses /proc")
+    def test_timed_out_process_group_kills_descendant(self):
+        import time
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pid_file = root / "descendant.pid"
+            script = root / "spawn.py"
+            script.write_text(
+                "import subprocess, sys, time\n"
+                "child = subprocess.Popen([sys.executable, '-c', "
+                "'import time; time.sleep(60)'])\n"
+                "open(sys.argv[1], 'w').write(str(child.pid))\n"
+                "time.sleep(60)\n", encoding="utf-8")
+            with (root / "out.log").open("wb") as stdout, (root / "err.log").open("wb") as stderr:
+                with self.assertRaises(verify.subprocess.TimeoutExpired):
+                    verify.run_bounded([verify.sys.executable, str(script), str(pid_file)], root,
+                                       stdout, stderr, 0.2)
+            descendant = int(pid_file.read_text(encoding="utf-8"))
+            proc_stat = Path(f"/proc/{descendant}/stat")
+            for _ in range(50):
+                try:
+                    stat = proc_stat.read_text(encoding="utf-8")
+                    state = stat[stat.rfind(")") + 2:].split()[0]
+                except (FileNotFoundError, ProcessLookupError):
+                    break
+                if state in ("Z", "X"):
+                    break
+                time.sleep(0.02)
+            else:
+                self.fail("timed-out descendant remained executing after process-group cleanup")
 
     def test_argument_validation(self):
         self.assertEqual(verify.positive("2"), 2)
