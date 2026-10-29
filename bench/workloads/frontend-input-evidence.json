@@ -1,0 +1,67 @@
+{
+  "schema": "m0-frontend-captured-input-evidence-v1",
+  "status": "UNFROZEN",
+  "mandatory_comparison": false,
+  "qualification": "actual local frontend rendering/tokenization evidence only; artifact-specific candidates are not a full workload or suite freeze; no runtime, dispatch, MTP, weights, performance, or quality qualification",
+  "source_lock_sha256": "7780529d15d5ee92cacb68847ac4c2edda874f4eef2c681ed9bf463d68177745",
+  "renderer": {"python": "3.9.6", "tokenizers": "0.22.1", "Jinja2": "3.1.6"},
+  "comparison": {
+    "cached_output": ".cache/m0-frontend/results/frontend-comparison.json",
+    "repository_output": "bench/workloads/inputs/frontend-comparison.json",
+    "output_sha256": "228fb231ff890cfd760f0d4541b23332ed328bf712aa556487ade09fc99fd914",
+    "repository_output_sha256": "228fb231ff890cfd760f0d4541b23332ed328bf712aa556487ade09fc99fd914"
+  },
+  "outputs": [
+    {
+      "candidate": "plain-128",
+      "cached_output": ".cache/m0-frontend/results/plain-128.json",
+      "repository_output": "bench/workloads/inputs/plain-128.json",
+      "output_sha256": "e7490a1e194a79ac16474feae488238cbaf160f11bc86f259a34fdcd689a024b",
+      "repository_output_sha256": "e7490a1e194a79ac16474feae488238cbaf160f11bc86f259a34fdcd689a024b",
+      "model": "original",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "prompt_tokens": 128,
+      "target_prompt_tokens": 128,
+      "target_matched": true,
+      "max_new_tokens": 512,
+      "total_context_tokens": 640,
+      "rendered_utf8_sha256": "200d57bacadf3d70bc7cdb9935720ef9e3aa663f49357514c3318e6cd9b4a531",
+      "token_ids_sha256": "44cf9bbca6881f04e6d60e03f0a862caa2840c41a0d49e018895f2824dc8e6b3",
+      "template_options": {"add_generation_prompt": true, "add_vision_id": false, "date_string": "2025-01-15", "documents": [], "enable_thinking": true, "preserve_thinking": true, "reasoning_effort": "xhigh", "tools": []}
+    },
+    {
+      "candidate": "plain-2048",
+      "cached_output": ".cache/m0-frontend/results/plain-2048.json",
+      "repository_output": "bench/workloads/inputs/plain-2048.json",
+      "output_sha256": "fcccebeffdb53ef8e67df2372842218ee6a6615488f248805415ab28ce962982",
+      "repository_output_sha256": "fcccebeffdb53ef8e67df2372842218ee6a6615488f248805415ab28ce962982",
+      "model": "original",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "prompt_tokens": 2048,
+      "target_prompt_tokens": 2048,
+      "target_matched": true,
+      "max_new_tokens": 512,
+      "total_context_tokens": 2560,
+      "rendered_utf8_sha256": "5a849ad68cef34bd023f6b0eb7474d24109a6a1ec4b79129db26f252014eec68",
+      "token_ids_sha256": "3f2cffb62f8a24b83d4dec48bff6e54974e208cf3f407cf315f293f5442b5f04",
+      "template_options": {"add_generation_prompt": true, "add_vision_id": false, "date_string": "2025-01-15", "documents": [], "enable_thinking": true, "preserve_thinking": true, "reasoning_effort": "xhigh", "tools": []}
+    },
+    {
+      "candidate": "native-mtp-7680",
+      "cached_output": ".cache/m0-frontend/results/native-mtp-7680.json",
+      "repository_output": "bench/workloads/inputs/native-mtp-7680.json",
+      "output_sha256": "8c4fe577e78d149e597c056439ef55d78d0ca4ee5935010c11566fe75f01b9c0",
+      "repository_output_sha256": "8c4fe577e78d149e597c056439ef55d78d0ca4ee5935010c11566fe75f01b9c0",
+      "model": "original",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "prompt_tokens": 7680,
+      "target_prompt_tokens": 7680,
+      "target_matched": true,
+      "max_new_tokens": 512,
+      "total_context_tokens": 8192,
+      "rendered_utf8_sha256": "f37b92b98abf3006cf32c64a3080f19ec1afe2e3bc94e2dd3489547a296d907b",
+      "token_ids_sha256": "08a3bd9e8215f7e33935346d0c1fadb16f1db7878b0e7a2078c1c75e886a2e13",
+      "template_options": {"add_generation_prompt": true, "add_vision_id": false, "date_string": "2025-01-15", "documents": [], "enable_thinking": true, "preserve_thinking": true, "reasoning_effort": "xhigh", "tools": []}
+    }
+  ]
+}
