@@ -21,3 +21,42 @@ python3 -B -m unittest discover -s bench/tests -p 'test_independent_oracles.py' 
 ```
 
 The JSON fixture is the hand-authored known-answer source; tests compare independent literal expectations to the scalar oracle, rather than relying on pack/unpack round trips as the sole oracle.
+
+## Independent small layer/state fixture (limited mathematical conventions)
+
+`layer_state_known_answers.json` and `oracles/layer_state.py` add stdlib-only,
+small fixtures for RMSNorm, one-pair RoPE, SwiGLU, single-head causal attention,
+a scalar gated-delta-style recurrence, and causal depthwise FIR history. These
+are deliberately **declared fixture formulas**, not assertions of the locked
+Qwen3.8-27B implementation:
+
+- RMSNorm: `x_i / sqrt(mean(x*x) + epsilon) * weight_i`.
+- RoPE: adjacent pair rotation by `position / theta` (one pair only).
+- SwiGLU: `silu(gate) * up`, with `silu(z)=z/(1+exp(-z))`.
+- Attention: stable softmax of causal `q·k/sqrt(d)` over positions through the
+  current token, followed by the weighted value sum; no masks beyond causality.
+- Recurrence: scalar `s' = s + beta*(v-k*s)` and output `k*s'`.
+- Convolution: per-channel causal FIR with kernel index zero on the current
+  token; state contains prior samples, newest first.
+
+Known-answer outputs are literal JSON values chosen independently of the oracle.
+The nonzero attention case uses logits `0` and `ln(2)`, hence softmax weights
+`1/3` and `2/3` and weighted value `7`; the recurrence uses two distinct keys
+and beta values. Python binary64 is used; comparisons allow absolute and relative
+tolerance `1e-12`. Transcendental results therefore are not bitwise targets.
+`ScalarRecurrenceState` provides a small mutable toy API with `step`, `reset`,
+`checkpoint`, `rollback`, and independent `clone`; tests cover continuation,
+chunk-grouped versus tokenwise calls, restore/reset, and branch isolation. The
+convolution fixture passes immutable history explicitly and is not a state API.
+
+The source lock pins upstream NInfer-4080 references and identifies selected
+SwiGLU/GDN sources, but this fixture work did not verify their precise formulas,
+parameterization, normalization/epsilon, rotary convention/frequency schedule,
+attention head mapping/masks, convolution layout, state update/reset semantics,
+or target rounding/accumulation against those sources or an executable. Inputs
+reject booleans/non-numbers and nonfinite values; derived overflow/nonfinite
+outputs raise `ValueError`. RMSNorm and SiLU use scaled/stable forms where needed.
+In particular the scalar recurrence object is only a pedagogical state fixture,
+not Qwen GDN. No complete Qwen weights/profile/frontend, original BF16 comparison, or
+BF16 qualification is claimed. M0.6 remains partial; see `docs/m0-evidence.md`
+and `docs/source-lock.md` for unresolved evidence gates.

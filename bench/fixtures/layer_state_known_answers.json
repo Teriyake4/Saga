@@ -1,0 +1,14 @@
+{
+  "status": "independent small mathematical fixture only; not target qualification",
+  "precision": "Python binary64 math; rational/simple exact answers are JSON literals",
+  "tolerances": {"absolute": 1e-12, "relative": 1e-12},
+  "cases": {
+    "rms_norm": {"x": [3, 4], "weight": [1, 1], "epsilon": 1, "expected": [0.816496580927726, 1.0886621079036347]},
+    "rope_nonzero": {"x": [1, 0], "position": 1, "theta": 2, "expected": [0.8775825618903728, 0.479425538604203]},
+    "swiglu_nonzero": {"gate": [0.6931471805599453], "up": [4], "expected": [1.8483924814931874]},
+    "causal_attention": {"query": [[0], [0.6931471805599453]], "keys": [[0], [1]], "values": [[3], [9]], "expected": [[3], [7]]},
+    "gated_delta": {"state": 2, "steps": [[1, 4, 0.5, 3, 3], [2, 1, 0.25, 3.5, 1.75]]},
+    "depthwise_conv": {"history": [[2]], "sample": [3], "kernel": [2, 1], "expected_output": [8], "expected_history": [[3]]}
+  },
+  "state_semantics": "ScalarRecurrenceState is a mutable toy lifecycle API: checkpoint returns an immutable scalar, rollback restores it, reset assigns the initial scalar, clone creates an independent object. Convolution continuation passes returned immutable history; no production state format is implied."
+}
