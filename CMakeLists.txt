@@ -5,7 +5,8 @@ project(Saga VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 option(SAGA_BUILD_TESTS "Build host tests (no model weights required)" ON)
-option(SAGA_ENABLE_CUDA "Build the real-device SM89 portability probe" OFF)
+option(SAGA_ENABLE_CUDA "Build the SM89 CUDA backend and portability probe" OFF)
+option(SAGA_BUILD_CUDA_TESTS "Build physical CUDA validation executables (requires CUDA)" OFF)
 option(SAGA_ENABLE_IMAGE_DECODER "Build the optional bounded PNG/JPEG image decoder" OFF)
 option(SAGA_WARNINGS_AS_ERRORS "Treat warnings in Saga sources as errors" ON)
 option(SAGA_SANITIZERS "Enable host address and undefined behavior sanitizers" OFF)
@@ -18,16 +19,24 @@ find_package(Threads REQUIRED)
 
 add_library(saga_build_options INTERFACE)
 if(MSVC)
-  target_compile_options(saga_build_options INTERFACE /W4 /permissive- /utf-8 /Zc:__cplusplus)
+  target_compile_options(saga_build_options INTERFACE
+    "$<$<COMPILE_LANGUAGE:CXX>:/W4;/permissive-;/utf-8;/Zc:__cplusplus>")
   if(SAGA_WARNINGS_AS_ERRORS)
-    target_compile_options(saga_build_options INTERFACE /WX)
+    target_compile_options(saga_build_options INTERFACE $<$<COMPILE_LANGUAGE:CXX>:/WX>)
   endif()
   target_compile_definitions(saga_build_options INTERFACE WIN32_LEAN_AND_MEAN NOMINMAX _WIN32_WINNT=0x0A00)
 else()
-  target_compile_options(saga_build_options INTERFACE -Wall -Wextra -Wpedantic)
+  target_compile_options(saga_build_options INTERFACE
+    "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>")
   if(SAGA_WARNINGS_AS_ERRORS)
-    target_compile_options(saga_build_options INTERFACE -Werror)
+    target_compile_options(saga_build_options INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
   endif()
+endif()
+if(SAGA_BUILD_CUDA_TESTS AND NOT SAGA_ENABLE_CUDA)
+  message(FATAL_ERROR "SAGA_BUILD_CUDA_TESTS requires SAGA_ENABLE_CUDA=ON")
+endif()
+if(SAGA_ENABLE_CUDA AND (SAGA_SANITIZERS OR SAGA_THREAD_SANITIZER))
+  message(FATAL_ERROR "Host sanitizer configurations are separate from CUDA validation")
 endif()
 if(SAGA_SANITIZERS AND SAGA_THREAD_SANITIZER)
   message(FATAL_ERROR "ThreadSanitizer must run separately from AddressSanitizer/UBSan")
@@ -105,6 +114,22 @@ if(SAGA_ENABLE_CUDA)
   target_link_libraries(saga_cuda_portability_smoke PRIVATE CUDA::cudart)
   if(WIN32)
     target_compile_definitions(saga_cuda_portability_smoke PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+  endif()
+
+  add_library(saga_cuda STATIC
+    src/backends/cuda/projection.cu src/backends/cuda/resources.cpp)
+  target_include_directories(saga_cuda PUBLIC include)
+  target_link_libraries(saga_cuda PUBLIC saga_foundation PRIVATE CUDA::cudart CUDA::cuda_driver)
+  set_target_properties(saga_cuda PROPERTIES
+    CUDA_ARCHITECTURES 89 CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON CUDA_EXTENSIONS OFF
+    CUDA_SEPARABLE_COMPILATION ON CUDA_RUNTIME_LIBRARY Shared)
+
+  if(SAGA_BUILD_CUDA_TESTS)
+    add_executable(saga_cuda_projection_test tests/cuda/projection_test.cu)
+    target_link_libraries(saga_cuda_projection_test PRIVATE saga_cuda saga_dependencies CUDA::cudart)
+    set_target_properties(saga_cuda_projection_test PROPERTIES
+      CUDA_ARCHITECTURES 89 CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON CUDA_EXTENSIONS OFF
+      CUDA_SEPARABLE_COMPILATION ON CUDA_RESOLVE_DEVICE_SYMBOLS ON CUDA_RUNTIME_LIBRARY Shared)
   endif()
 endif()
 
