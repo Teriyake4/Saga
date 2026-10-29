@@ -61,6 +61,8 @@ public:
     bool has_unresolved_terms() const noexcept;
     DomainBytes known_reserved_bytes() const; // reporting only; not a fit/serving approval
     BringupGrant grant(const Budgets&) const;
+    // Returns an otherwise identical candidate (including alias bindings) with a new identity.
+    StaticCandidate with_profile_identity(std::string identity) const;
 
 private:
     friend class BringupGrant;

@@ -95,6 +95,14 @@ StaticCandidate& StaticCandidate::operator=(StaticCandidate&& other) noexcept {
     return *this;
 }
 
+StaticCandidate StaticCandidate::with_profile_identity(std::string identity) const {
+    if (!valid_) throw std::logic_error("cannot reidentify a moved-from static candidate");
+    if (identity.empty()) throw std::invalid_argument("profile identity is required");
+    auto copy = *this;
+    copy.profile_identity_ = std::move(identity);
+    return copy;
+}
+
 bool StaticCandidate::has_unresolved_terms() const noexcept {
     for (const auto& line : lines_)
         if (!line.padded_bytes || line.allocation.source != AllocationSource::project) return true;
