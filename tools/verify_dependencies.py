@@ -12,8 +12,16 @@ def main():
     if lock["schema_version"] != 2:
         raise ValueError("unsupported dependency lock schema")
     entries = lock["files"]
-    if len(entries) != 6 or len({entry["path"] for entry in entries}) != 6:
-        raise ValueError("expected three distinct headers and three licenses")
+    paths = {entry["path"] for entry in entries}
+    required = {
+        "third_party/cpp-httplib/httplib.h", "third_party/cpp-httplib/LICENSE",
+        "third_party/json/json.hpp", "third_party/json/LICENSE",
+        "third_party/tomlplusplus/toml.hpp", "third_party/tomlplusplus/LICENSE",
+    }
+    if len(paths) != len(entries) or not required.issubset(paths):
+        raise ValueError("dependency lock must retain all original unique pinned files")
+    if not {"third_party/stb-image/stb_image.h", "third_party/stb-image/LICENSE"}.issubset(paths):
+        raise ValueError("optional decoder header and license must both be pinned")
     patches = lock["patches"]
     patch_paths = {entry["path"] for entry in patches}
     references = {path for entry in entries for path in entry.get("local_patches", [])}
@@ -33,7 +41,7 @@ def main():
         data = path.read_bytes()
         if len(data) != entry["bytes"] or hashlib.sha256(data).hexdigest() != entry["sha256"]:
             raise ValueError("vendored dependency mismatch: " + entry["path"])
-    print("PASS: all six pinned host dependency files and local patches match their recorded SHA-256/size")
+    print(f"PASS: all {len(entries)} pinned dependency files and {len(patches)} local patches match their recorded SHA-256/size")
 
 
 if __name__ == "__main__":

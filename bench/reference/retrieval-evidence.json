@@ -1143,8 +1143,98 @@
       "id": "zero734kr/switchyard:setup.py",
       "sha256": null,
       "url": "https://raw.githubusercontent.com/zero734kr/switchyard/b4bd35679da0ec5de08027637e7b94b4578a2cf8/setup.py"
+    },
+    {
+      "bytes": 1852,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/README.md",
+      "http_status": 200,
+      "id": "ggml-org/ggml:README.md",
+      "sha256": "359c498c79a326f621323e44fd3d3470a1ec635b0031206f35ad5e85a4b830c7",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/README.md"
+    },
+    {
+      "bytes": 1078,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/LICENSE",
+      "http_status": 200,
+      "id": "ggml-org/ggml:LICENSE",
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/LICENSE"
+    },
+    {
+      "bytes": 21801,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/CMakeLists.txt",
+      "http_status": 200,
+      "id": "ggml-org/ggml:CMakeLists.txt",
+      "sha256": "77f797b4794845be320ffbfc1dd9429b0372d50ba23c023309a46ea28919847c",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/CMakeLists.txt"
+    },
+    {
+      "bytes": 43175,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/docs/gguf.md",
+      "http_status": 200,
+      "id": "ggml-org/ggml:docs/gguf.md",
+      "sha256": "1dead27b6a522709f0127d194e58c21dbbbf00ba1c64fe37c54d1a9048b05020",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/docs/gguf.md"
+    },
+    {
+      "bytes": 11355,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/gguf.h",
+      "http_status": 200,
+      "id": "ggml-org/ggml:include/gguf.h",
+      "sha256": "e56714aab702e5ce62ee587a409643c08f7e93e8fbb77f48ef7cc85075f96fa4",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/gguf.h"
+    },
+    {
+      "bytes": 58995,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/src/gguf.cpp",
+      "http_status": 200,
+      "id": "ggml-org/ggml:src/gguf.cpp",
+      "sha256": "7505d6a434dc740941a682fd3b476ef9bd9893ab76adf18c9969daa528bd5be5",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/src/gguf.cpp"
+    },
+    {
+      "bytes": 118304,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/ggml.h",
+      "http_status": 200,
+      "id": "ggml-org/ggml:include/ggml.h",
+      "sha256": "2b4dd92fa992cb4ef484917a6c62fef5097698744160ccc09214fd0c459c92c7",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/ggml.h"
+    },
+    {
+      "bytes": 27570,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/ggml-backend.h",
+      "http_status": 200,
+      "id": "ggml-org/ggml:include/ggml-backend.h",
+      "sha256": "0e5e8e1f16d11ebbf501e38bc6705d79eee819b5f0b17476533f2100ed9674e2",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/ggml-backend.h"
+    },
+    {
+      "bytes": 25821,
+      "error": null,
+      "final_url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/src/ggml-impl.h",
+      "http_status": 200,
+      "id": "ggml-org/ggml:src/ggml-impl.h",
+      "sha256": "43564db0238aebb7ed68501e346c194866b5dac218d1d37b26baff9f458c00d3",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/src/ggml-impl.h"
+    },
+    {
+      "bytes": null,
+      "error": "HTTP Error 403: rate limit exceeded",
+      "error_body": "{\"message\":\"API rate limit exceeded for 155.246.151.34. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}",
+      "http_status": 403,
+      "id": "ggml-org/ggml:commit-api",
+      "sha256": null,
+      "url": "https://api.github.com/repos/ggml-org/ggml/commits/facdc44a67da17df4433adcc468b424f48e9ded2"
     }
   ],
-  "method": "Python urllib HTTPS GET; maximum 8 MiB per source; no weights, remote execution, build or benchmark",
-  "retrieval_date": "2026-10-27"
+  "method": "Python urllib HTTPS GET; maximum 8 MiB per source; no weights, remote execution, build or benchmark; 2026-10-28 pinned ggml source append, same 8 MiB and 25 s bounds; commit API returned HTTP 403 rate limit",
+  "retrieval_date": "2026-10-28"
 }

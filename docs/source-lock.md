@@ -1,7 +1,8 @@
 # M0 source lock and retrieval evidence
 
 Status: **partially source-verified; M0 blocked; no inference code imported**.
-Inspection date: 2026-10-27. Authority: `PROPOSAL.md` section 16 and
+Initial inspection: 2026-10-27; GGUF provenance append: 2026-10-28.
+Authority: `PROPOSAL.md` section 16 and
 `IMPLEMENTATION_PLAN.md` M0. Source inspection is not build, dispatch, numerical,
 model-quality, memory, or performance qualification.
 
@@ -27,6 +28,13 @@ file in each tree, a signed commit, or an independently reproduced binary.
 Raw-source byte hashes are local retrieval evidence; a model card's weight hash
 is only a **publisher claim** until independently checked on the actual bytes.
 
+The 2026-10-28 GGUF append preserves those original records and historical
+attempts. The combined inventory is **114 inputs: 105 recorded-verified inputs
+and nine unverified observations** (the eight original 404 probes and an optional
+GGUF commit API 403). All nine new raw-source hashes were independently re-fetched
+and matched. The failed commit API observation stays unverified; no successful
+commit response or model/runtime qualification is inferred from it.
+
 ## Pinned engines and licensing
 
 | Repository | Exact revision | Retrieved and inspected |
@@ -36,6 +44,7 @@ is only a **publisher claim** until independently checked on the actual bytes.
 | `Niko1221/Strata` | `5e8a4cca7d690ac60ca37eb09e7d0e010099ad6d` | README, MIT LICENSE, root CMake, execution/benchmark documents and selected prefill/expert-cache/speculation sources |
 | `zero734kr/switchyard` | `b4bd35679da0ec5de08027637e7b94b4578a2cf8` | README, root `pyproject.toml`, kernel methodology, guards and three selected fusion sources; license unresolved |
 | `ggml-org/llama.cpp` | `e86f5fd1e9f584b0fcec71d7da9a92de44e8bcbf` | README, MIT LICENSE, root CMake, cache CLI parser, block definitions/codebook, scalar quantizers/dequantizers and dependent headers |
+| `ggml-org/ggml` | `facdc44a67da17df4433adcc468b424f48e9ded2` | GGUF specification, selected reader/API/dependency headers, README, MIT LICENSE and root CMake; nine raw-source hashes verified, optional commit API rate-limited |
 
 Examples of actual retrieved SHA-256 values (the JSON lock has the complete list):
 
@@ -118,11 +127,26 @@ run command or native reference result has been frozen. Obtain evidence per
 phase and operation site before freezing a comparable case; patch only if needed
 and record exact patch bytes/hash and build/run commands.
 
-### GGUF format reference: not yet pinned or verified
+### GGUF specification and selected reader-source pin
 
-Saga's runtime input policy is GGUF, but the existing source lock does **not** establish a GGUF model reader, writer, converter, or GSQ/Q4 interoperability. The pinned llama.cpp files below were selected for GGML block-32 KV numerical contracts; they are not evidence that arbitrary GGUF model tensors or Saga's GSQ profile are supported.
+The GGUF reference is now pinned at `ggml-org/ggml` revision
+`facdc44a67da17df4433adcc468b424f48e9ded2`:
+[specification](https://github.com/ggml-org/ggml/blob/facdc44a67da17df4433adcc468b424f48e9ded2/docs/gguf.md).
+`docs/gguf.md` is 43,175 bytes with SHA-256
+`1dead27b6a522709f0127d194e58c21dbbbf00ba1c64fe37c54d1a9048b05020`.
+The lock also records actual bytes/hashes for `include/gguf.h`, `src/gguf.cpp`,
+`include/ggml.h`, `include/ggml-backend.h`, `src/ggml-impl.h`, README, CMake and
+LICENSE. The unchanged MIT license is preserved under
+`bench/reference/licenses/ggml-org--ggml.LICENSE`.
 
-Unpinned design reference for future M0/M3 work: https://github.com/ggml-org/ggml/blob/master/docs/gguf.md. This reference was not retrieved, hashed, or treated as a normative pinned revision in this snapshot. Before implementation, pin the specification revision and any reader/converter source actually used, preserve retrieval/hash evidence separately, and verify the exact supported architecture/encoding profile and payload mapping. Do not modify historical retrieval evidence to imply prior verification.
+The pinned commit API returned HTTP 403 (rate limit); its optional record has no
+hash and remains unverified. All nine required raw files returned 200, and their
+hashes matched an independent second retrieval. This is source-content evidence,
+not commit authentication, an adopted/compiled reader, GSQ/Q4 interoperability or
+runtime GGUF support. Any later converter dependencies must be pinned separately;
+the exact supported profile and code/scale mapping remain unresolved M0/M3 work.
+The earlier llama.cpp lock still covers selected KV numerical contracts, not a
+GGUF model loader. Original retrieval records/history were not retroactively edited.
 
 ### llama.cpp numerical-source provenance
 

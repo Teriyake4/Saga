@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import re
+import stat
 import sys
 import urllib.error
 import urllib.parse
@@ -28,6 +29,7 @@ REPOSITORIES = {
     "Niko1221/Strata": "5e8a4cca7d690ac60ca37eb09e7d0e010099ad6d",
     "zero734kr/switchyard": "b4bd35679da0ec5de08027637e7b94b4578a2cf8",
     "ggml-org/llama.cpp": "e86f5fd1e9f584b0fcec71d7da9a92de44e8bcbf",
+    "ggml-org/ggml": "facdc44a67da17df4433adcc468b424f48e9ded2",
 }
 REQUIRED_FILES = {
     repo: {"README.md", "LICENSE", "CMakeLists.txt"} for repo in REPOSITORIES
@@ -37,6 +39,10 @@ REQUIRED_FILES["ggml-org/llama.cpp"].update({
     "common/arg.cpp", "ggml/src/ggml-common.h", "ggml/src/ggml-quants.c",
     "ggml/src/ggml-quants.h", "ggml/src/ggml-impl.h", "ggml/include/ggml.h",
 })
+REQUIRED_FILES["ggml-org/ggml"] = {
+    "README.md", "LICENSE", "CMakeLists.txt", "docs/gguf.md", "include/gguf.h",
+    "src/gguf.cpp", "include/ggml.h", "include/ggml-backend.h", "src/ggml-impl.h",
+}
 REQUIRED_FILES["yalding/ninfer-4080"].update({
     "src/ops/linear/q3/q3_dispatch.cpp", "src/ops/linear/q3/q3_dispatch.h",
     "src/ops/linear/q3/q3_rowsplit_storage.cuh",
@@ -100,16 +106,37 @@ def check_url(url, allow_cache=False):
     raise ValueError("URL is not an allowed pinned source/metadata endpoint: " + url)
 
 
+def check_response_identity(original_url, final_url):
+    """Require the requested identity, except for a matching HF metadata cache redirect."""
+    if not isinstance(final_url, str):
+        raise TypeError("response has no final URL")
+    check_url(original_url)
+    if final_url == original_url:
+        check_url(final_url)
+        return
+
+    original = urllib.parse.urlsplit(original_url)
+    final = urllib.parse.urlsplit(final_url)
+    original_parts = original.path.strip("/").split("/")
+    final_parts = final.path.strip("/").split("/")
+    hf_cache_identity = (
+        original.hostname == "huggingface.co"
+        and len(original_parts) == 5
+        and original_parts[2] == "resolve"
+        and final.hostname == "huggingface.co"
+        and len(final_parts) == 7
+        and final_parts[:3] == ["api", "resolve-cache", "models"]
+        and final_parts[3:] == original_parts[:2] + original_parts[3:]
+    )
+    if hf_cache_identity:
+        check_url(final_url, allow_cache=True)
+        return
+    raise ValueError("response URL changed declared repository/revision/path")
+
+
 class MetadataRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        check_url(newurl, allow_cache=True)
-        old = urllib.parse.urlsplit(req.full_url)
-        new = urllib.parse.urlsplit(newurl)
-        if new.path.startswith("/api/resolve-cache/models/"):
-            original = old.path.strip("/").split("/")
-            target = new.path.strip("/").split("/")[3:]
-            if len(original) != 5 or original[2] != "resolve" or target != original[:2] + original[3:]:
-                raise ValueError("metadata redirect changed repository/revision/file")
+        check_response_identity(req.full_url, newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
@@ -125,17 +152,26 @@ def fetch_input(entry, timeout=25):
         with urllib.request.build_opener(MetadataRedirect()).open(request, timeout=timeout) as response:
             result["http_status"] = response.status
             result["final_url"] = response.url
+            check_response_identity(url, response.url)
             body = response.read(MAX_BYTES + 1)
             if len(body) > MAX_BYTES:
                 raise ValueError("metadata response exceeds 8 MiB limit")
             if response.status != 200:
                 raise ValueError("expected HTTP 200")
             result.update(sha256=hashlib.sha256(body).hexdigest(), bytes=len(body))
+            if entry.get("kind") == "commit-api":
+                try:
+                    reported = json.loads(body).get("sha")
+                except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+                    raise ValueError("commit API response is not a commit object")
+                result["reported_revision"] = reported
+                if reported != entry["revision"]:
+                    raise ValueError("commit API response revision does not match pin")
             return result, body
     except urllib.error.HTTPError as error:
         result.update(http_status=error.code, error=str(error),
                       error_body=error.read(4096).decode("utf-8", "replace"))
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, TypeError) as error:
         result["error"] = type(error).__name__ + ": " + str(error)
     return result, None
 
@@ -247,7 +283,92 @@ def semantic_errors(reference, quality):
     return errors
 
 
-def audit(root=ROOT, online=False, structure_only=False):
+def safe_artifact_path(value):
+    if (not isinstance(value, str) or not value or "\x00" in value or "\\" in value
+            or ":" in value or value.startswith(("/", "//"))):
+        raise ValueError("noncanonical artifact path")
+    parts = value.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("noncanonical artifact path")
+    return parts
+
+
+def verify_artifact_file(root, artifact, item):
+    declared_path = item.get("path")
+    try:
+        parts = safe_artifact_path(declared_path)
+    except ValueError:
+        return {"path": None, "status": "unverified", "bytes": None, "sha256": None,
+                "error": "noncanonical artifact path"}
+    result = {"path": declared_path, "status": "unverified", "bytes": None, "sha256": None,
+              "error": None}
+    try:
+        base = Path(root).resolve()
+        candidate = base.joinpath(artifact["id"], *parts)
+        resolved = candidate.resolve(strict=True)
+        if not resolved.is_relative_to(base):
+            raise ValueError("artifact path escapes explicit root")
+        info = candidate.lstat()
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+            raise ValueError("artifact path is not a regular file")
+        digest = hashlib.sha256()
+        count = 0
+        with candidate.open("rb") as stream:
+            while count <= item["bytes"]:
+                chunk = stream.read(min(1024 * 1024, item["bytes"] + 1 - count))
+                if not chunk:
+                    break
+                count += len(chunk)
+                digest.update(chunk)
+        after = candidate.stat()
+        if (count != item["bytes"] or info.st_size != after.st_size or
+                info.st_mtime_ns != after.st_mtime_ns or info.st_ino != after.st_ino):
+            raise ValueError("artifact size mismatch or file changed during hash")
+        result.update(bytes=count, sha256=digest.hexdigest())
+        result["status"] = "matched" if digest.hexdigest() == item["sha256"] else "mismatch"
+        if result["status"] == "mismatch":
+            result["error"] = "SHA-256 mismatch"
+    except OSError:
+        result["error"] = "artifact file unavailable or unreadable"
+    except (ValueError, KeyError, TypeError) as error:
+        result["error"] = str(error) if isinstance(error, ValueError) and str(error) in {
+            "artifact path escapes explicit root", "artifact path is not a regular file",
+            "artifact size mismatch or file changed during hash"} else "invalid artifact evidence"
+    return result
+
+
+def evidence_shape_errors(evidence_rows, lock_ids):
+    errors = []
+    if not isinstance(evidence_rows, list):
+        return ["retrieval evidence inputs must be an array"]
+    evidence_ids = [row.get("id") if isinstance(row, dict) else None for row in evidence_rows]
+    normalized = [item for item in evidence_ids if isinstance(item, str)]
+    if len(normalized) != len(set(normalized)):
+        errors.append("duplicate retrieval evidence IDs")
+    if set(normalized) != set(lock_ids) or len(normalized) != len(lock_ids):
+        errors.append("retrieval evidence IDs must match source lock IDs one-to-one")
+    required_fields = {"id", "url", "http_status", "error", "bytes", "sha256"}
+    for row in evidence_rows:
+        if (not isinstance(row, dict) or not required_fields.issubset(row)
+                or not isinstance(row.get("id"), str)
+                or not isinstance(row.get("url"), str)
+                or row.get("http_status") is not None and
+                   (not isinstance(row.get("http_status"), int) or isinstance(row.get("http_status"), bool))
+                or row.get("error") is not None and not isinstance(row.get("error"), str)
+                or (row.get("bytes") is None) != (row.get("sha256") is None)
+                or row.get("bytes") is not None and
+                   (not isinstance(row.get("bytes"), int) or isinstance(row.get("bytes"), bool) or row["bytes"] < 0)
+                or row.get("sha256") is not None and
+                   (not isinstance(row.get("sha256"), str) or not SHA256.fullmatch(row["sha256"]))
+                or "final_url" in row and not isinstance(row["final_url"], str)
+                or row.get("http_status") == 200 and not isinstance(row.get("final_url"), str)
+                or "reported_revision" in row and not isinstance(row["reported_revision"], str)):
+            errors.append("malformed retrieval evidence observation")
+            break
+    return errors
+
+
+def audit(root=ROOT, online=False, structure_only=False, artifact_root=None):
     reference = load(root / "bench/reference/manifest.json")
     quality = load(root / "bench/quality/manifest.json")
     lock = load(root / "bench/reference/source-lock.json")
@@ -291,6 +412,18 @@ def audit(root=ROOT, online=False, structure_only=False):
                 errors.append("hash/byte-count must be resolved together: " + entry["id"])
         except ValueError as error:
             errors.append(str(error))
+    lock_ids = [entry.get("id") for entry in entries]
+    evidence_rows = evidence.get("inputs") if isinstance(evidence, dict) else None
+    errors.extend(evidence_shape_errors(evidence_rows, lock_ids))
+    for artifact in reference.get("artifacts", []):
+        paths = []
+        for declared in artifact.get("files", []):
+            try:
+                paths.append("/".join(safe_artifact_path(declared.get("path"))))
+            except (ValueError, AttributeError):
+                errors.append("noncanonical artifact path: " + artifact.get("id", "unknown"))
+        if len(paths) != len(set(paths)):
+            errors.append("duplicate artifact file paths: " + artifact.get("id", "unknown"))
     report = {"format_version": 1, "mode": "structure-only" if structure_only else
               ("online" if online else "recorded-evidence-offline"),
               "qualification": "not-evaluated", "errors": errors, "blockers": [], "inputs": []}
@@ -318,10 +451,18 @@ def audit(root=ROOT, online=False, structure_only=False):
                         local_error = "preserved license bytes do not match source lock"
                 except OSError as error:
                     local_error = str(error)
+        try:
+            check_response_identity(entry["url"], observed.get("final_url"))
+            final_url_verified = True
+        except (ValueError, TypeError):
+            final_url_verified = False
+        revision_verified = (entry["kind"] != "commit-api"
+                             or observed.get("reported_revision") == entry["revision"])
         verified = (expected is not None and observed.get("sha256") == expected
                     and observed.get("http_status") == 200 and observed.get("error") is None
                     and observed.get("url") == entry["url"]
-                    and observed.get("bytes") == entry["bytes"] and local_error is None)
+                    and observed.get("bytes") == entry["bytes"] and local_error is None
+                    and revision_verified and final_url_verified)
         item = {"id": entry["id"], "required": entry["required"], "expected_sha256": expected,
                 "status": ("fetched-verified" if online else "recorded-verified") if verified else "unverified",
                 "observation": observed, "local_error": local_error}
@@ -329,7 +470,22 @@ def audit(root=ROOT, online=False, structure_only=False):
         if entry["required"] and not verified:
             report["blockers"].append("required source unverified: " + entry["id"])
     for artifact in reference["artifacts"]:
-        if artifact["required"] and (artifact["status"] != "verified" or not artifact["revision"]
+        file_evidence = []
+        for declared in artifact["files"]:
+            if artifact_root is not None:
+                file_evidence.append(verify_artifact_file(artifact_root, artifact, declared))
+            else:
+                try:
+                    output_path = "/".join(safe_artifact_path(declared.get("path")))
+                except ValueError:
+                    output_path = None
+                file_evidence.append({"path": output_path, "status": "not-checked",
+                                      "bytes": None, "sha256": None, "error": "artifact root not provided"})
+        report.setdefault("artifacts", []).append({"id": artifact["id"], "files": file_evidence})
+        claimed_verified_without_bytes = (artifact["status"] == "verified" and artifact["files"]
+                                          and (artifact_root is None or not file_evidence
+                                               or any(item["status"] != "matched" for item in file_evidence)))
+        if artifact["required"] and (claimed_verified_without_bytes or artifact["status"] != "verified" or not artifact["revision"]
                                       or not artifact["files"] or artifact["compatibility"] != "verified"
                                                                             or artifact["unresolved"]):
             report["blockers"].append("artifact bytes/compatibility unverified: " + artifact["id"])
@@ -355,10 +511,12 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--online", action="store_true", help="explicit bounded HTTPS source/metadata checks")
     mode.add_argument("--structure-only", action="store_true", help="schemas/consistency only; not M0 readiness")
+    parser.add_argument("--artifact-root", type=Path, help="verify only declared local files at ROOT/<artifact-id>/<manifest file.path>; no scanning or downloads. The explicit root and stable hierarchy are trusted.")
     parser.add_argument("--output", type=Path, help="write canonical JSON report (default stdout)")
     args = parser.parse_args()
     try:
-        report, code = audit(online=args.online, structure_only=args.structure_only)
+        report, code = audit(online=args.online, structure_only=args.structure_only,
+                                     artifact_root=args.artifact_root)
     except (OSError, ValueError, KeyError, TypeError) as error:
         report, code = {"check_status": "invalid", "error": str(error), "qualification": "not-evaluated"}, 2
     text = canonical(report)

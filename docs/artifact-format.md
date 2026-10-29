@@ -30,6 +30,6 @@ The performance gate remains the matched, per-case requirement: at least 95% of 
 
 ## Verification and source pinning
 
-Before implementation, M0/M3 must pin the GGUF specification revision and any reader/converter source actually used, then verify the exact profile and standard payload mapping with independent fixtures. The current llama.cpp source lock covers selected GGML **KV-cache numerical contracts**; it is not evidence of a GGUF model loader or GSQ interoperability.
+The GGUF specification and selected reader/reference sources are pinned at `ggml-org/ggml` revision `facdc44a67da17df4433adcc468b424f48e9ded2`: [GGUF specification](https://github.com/ggml-org/ggml/blob/facdc44a67da17df4433adcc468b424f48e9ded2/docs/gguf.md). Nine required raw files were fetched, hashed and independently re-fetched with matching hashes; the optional commit API response remains rate-limited/unverified. See [source-lock.md](source-lock.md) for exact paths, hashes and limits. No reader/converter was imported, compiled or integrated.
 
-Design reference (currently unpinned; not retrieved or verified in this change): [GGUF specification](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md). The presence of standard integer/float tensor types in that specification alone does not define or qualify a Saga GSQ profile.
+M0/M3 must still verify the exact GSQ/Q4 profile and standard payload mapping with independent fixtures and pin any further reader/converter sources actually used. The presence of standard integer/float types alone does not define or qualify that profile. The separate llama.cpp source lock covers selected GGML **KV-cache numerical contracts**, not model loading or GSQ interoperability.

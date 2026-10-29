@@ -1248,7 +1248,127 @@
       "revision": "b4bd35679da0ec5de08027637e7b94b4578a2cf8",
       "sha256": null,
       "url": "https://raw.githubusercontent.com/zero734kr/switchyard/b4bd35679da0ec5de08027637e7b94b4578a2cf8/setup.py"
+    },
+    {
+      "bytes": 1852,
+      "id": "ggml-org/ggml:README.md",
+      "kind": "source",
+      "local_path": null,
+      "path": "README.md",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "359c498c79a326f621323e44fd3d3470a1ec635b0031206f35ad5e85a4b830c7",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/README.md"
+    },
+    {
+      "bytes": 1078,
+      "id": "ggml-org/ggml:LICENSE",
+      "kind": "source",
+      "local_path": "bench/reference/licenses/ggml-org--ggml.LICENSE",
+      "path": "LICENSE",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/LICENSE"
+    },
+    {
+      "bytes": 21801,
+      "id": "ggml-org/ggml:CMakeLists.txt",
+      "kind": "build-probe",
+      "local_path": null,
+      "path": "CMakeLists.txt",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "77f797b4794845be320ffbfc1dd9429b0372d50ba23c023309a46ea28919847c",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/CMakeLists.txt"
+    },
+    {
+      "bytes": 43175,
+      "id": "ggml-org/ggml:docs/gguf.md",
+      "kind": "source",
+      "local_path": null,
+      "path": "docs/gguf.md",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "1dead27b6a522709f0127d194e58c21dbbbf00ba1c64fe37c54d1a9048b05020",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/docs/gguf.md"
+    },
+    {
+      "bytes": 11355,
+      "id": "ggml-org/ggml:include/gguf.h",
+      "kind": "source",
+      "local_path": null,
+      "path": "include/gguf.h",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "e56714aab702e5ce62ee587a409643c08f7e93e8fbb77f48ef7cc85075f96fa4",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/gguf.h"
+    },
+    {
+      "bytes": 58995,
+      "id": "ggml-org/ggml:src/gguf.cpp",
+      "kind": "source",
+      "local_path": null,
+      "path": "src/gguf.cpp",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "7505d6a434dc740941a682fd3b476ef9bd9893ab76adf18c9969daa528bd5be5",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/src/gguf.cpp"
+    },
+    {
+      "bytes": 118304,
+      "id": "ggml-org/ggml:include/ggml.h",
+      "kind": "source",
+      "local_path": null,
+      "path": "include/ggml.h",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "2b4dd92fa992cb4ef484917a6c62fef5097698744160ccc09214fd0c459c92c7",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/ggml.h"
+    },
+    {
+      "bytes": 27570,
+      "id": "ggml-org/ggml:include/ggml-backend.h",
+      "kind": "source",
+      "local_path": null,
+      "path": "include/ggml-backend.h",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "0e5e8e1f16d11ebbf501e38bc6705d79eee819b5f0b17476533f2100ed9674e2",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/include/ggml-backend.h"
+    },
+    {
+      "bytes": 25821,
+      "id": "ggml-org/ggml:src/ggml-impl.h",
+      "kind": "source",
+      "local_path": null,
+      "path": "src/ggml-impl.h",
+      "repository": "ggml-org/ggml",
+      "required": true,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": "43564db0238aebb7ed68501e346c194866b5dac218d1d37b26baff9f458c00d3",
+      "url": "https://raw.githubusercontent.com/ggml-org/ggml/facdc44a67da17df4433adcc468b424f48e9ded2/src/ggml-impl.h"
+    },
+    {
+      "bytes": null,
+      "id": "ggml-org/ggml:commit-api",
+      "kind": "commit-api",
+      "local_path": null,
+      "path": null,
+      "repository": "ggml-org/ggml",
+      "required": false,
+      "revision": "facdc44a67da17df4433adcc468b424f48e9ded2",
+      "sha256": null,
+      "url": "https://api.github.com/repos/ggml-org/ggml/commits/facdc44a67da17df4433adcc468b424f48e9ded2"
     }
   ],
-  "retrieval_date": "2026-10-27"
+  "retrieval_date": "2026-10-28"
 }

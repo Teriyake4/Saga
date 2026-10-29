@@ -51,6 +51,22 @@
       "url": "https://raw.githubusercontent.com/marzer/tomlplusplus/v3.4.0/LICENSE",
       "sha256": "529bc3900a9571e49db285b0df432397e70b881cc3bf48de6667ae74ff4b06d8",
       "bytes": 1094
+    },
+    {
+      "dependency": "stb_image",
+      "version": "v2.30 at f7b2fcb360fc7c611e5b27f6aeb456e40b559210",
+      "path": "third_party/stb-image/stb_image.h",
+      "url": "https://raw.githubusercontent.com/nothings/stb/f7b2fcb360fc7c611e5b27f6aeb456e40b559210/stb_image.h",
+      "sha256": "594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3",
+      "bytes": 283010
+    },
+    {
+      "dependency": "stb_image",
+      "version": "v2.30 at f7b2fcb360fc7c611e5b27f6aeb456e40b559210",
+      "path": "third_party/stb-image/LICENSE",
+      "url": "https://raw.githubusercontent.com/nothings/stb/f7b2fcb360fc7c611e5b27f6aeb456e40b559210/LICENSE",
+      "sha256": "bebfe904b14301657e4e5d655c811d51fd31b97c455b9cc2d8600d6bac6cff63",
+      "bytes": 2510
     }
   ],
   "patches": [

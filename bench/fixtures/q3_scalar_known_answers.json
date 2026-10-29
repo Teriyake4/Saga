@@ -1,0 +1,39 @@
+{
+  "contract": {
+    "source_url": "https://raw.githubusercontent.com/yalding/ninfer-4080/2469b5752672ad597055af61fe28e8e7ced20056/src/ops/linear/q3/q3_rowsplit_storage.cuh",
+    "source_sha256": "acd422880252865b88c4b2ae97139c953f750695ec2e0f76f73ca36d164130db",
+    "group_codes": 128,
+    "packed_bytes": 48,
+    "signedness": "three-bit two's complement",
+    "byte_endian": "little-endian byte sequence",
+    "bit_order": "code 0 starts at least-significant bit; stream advances toward most-significant bits"
+  },
+  "answers": {
+    "repeated_pattern": {
+      "pattern_codes": [-4, -3, -2, -1, 0, 1, 2, 3],
+      "repeat_count": 16,
+      "expected_packed_hex": "ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68ac8f68"
+    },
+    "sparse_boundary": {
+      "overrides": {"0": -4, "1": 3, "2": -4, "21": 3, "42": -4, "84": 3, "127": -4},
+      "expected_nonzero_bytes": {"0": "1c", "1": "01", "7": "80", "8": "01", "16": "01", "31": "30", "47": "80"}
+    },
+    "scales": {
+      "positive_zero": {"fp16_bits": "0000", "fraction": "0/1"},
+      "one": {"fp16_bits": "3c00", "fraction": "1/1"},
+      "min_subnormal": {"fp16_bits": "0001", "fraction": "1/16777216"},
+      "max_subnormal": {"fp16_bits": "03ff", "fraction": "1023/16777216"},
+      "min_normal": {"fp16_bits": "0400", "fraction": "1/16384"},
+      "negative_zero": {"fp16_bits": "8000", "fraction": "0/1"},
+      "negative_one": {"fp16_bits": "bc00", "fraction": "-1/1"},
+      "max_finite": {"fp16_bits": "7bff", "fraction": "65504/1"}
+    },
+    "projection": {
+      "codes": [-4, 3, -1, 2],
+      "scale_bits": "3c00",
+      "activation": [1, 2, 3, 4],
+      "represented_values": ["-4/1", "3/1", "-1/1", "2/1"],
+      "exact_dot": "7/1"
+    }
+  }
+}

@@ -72,6 +72,19 @@ append/prefill/decode/verify paths need separate evidence. Custom group-64 and
 pinned GGML block-32 contracts must not be conflated. No arbitrary Cartesian
 product of K/V formats is implied; no context fit is inferred from bit width.
 
+## Partial independent scalar fixtures
+
+`bench/oracles/q3_scalar.py`, `bench/fixtures/q3_scalar_known_answers.json` and
+`bench/tests/test_independent_oracles.py` now exercise the locked reference's
+signed-int3 group-128 storage contract, exact finite-FP16 represented values and
+small scalar projections. Literal known answers, a separate positional-polynomial
+construction and all finite binary16 patterns provide independent cross-checks.
+They do not verify publisher GSQ codes/BF16 scale conversion, a GGUF mapping,
+complete Qwen layer/GDN/state behavior, frontend bindings or original-BF16 quality.
+The full `independent_fixture_inventory` remains unresolved; a nonempty toy fixture
+must not be used to clear all model/layer/state evidence requirements. See
+[../bench/fixtures/README.md](../bench/fixtures/README.md).
+
 ## Frozen mandatory performance suite versus proposals
 
 `bench/reference/manifest.json` currently has:
@@ -117,7 +130,12 @@ Linux and native Windows/MSVC. WSL is not native Windows evidence.
 consistency, rejecting candidate cases labeled mandatory/frozen, duplicate IDs,
 unfrozen suites with mandatory rows, incomplete frozen configurations and
 incomplete frozen quality preregistration. It does not run a model or approve a
-budget. Default and optional online audits additionally fail on unverified
+budget. Source retrieval observations must match locked IDs one-to-one and preserve
+final URL identity. Optional `--artifact-root DIRECTORY` streams only declared local
+files under `DIRECTORY/<artifact-id>/<files[].path>` to check actual sizes/hashes;
+without a root, a declared verified artifact cannot rely on metadata claims alone.
+There is no scan, download or compatibility approval. The root and stable hierarchy
+are trusted inputs. Default and optional online audits additionally fail on unverified
 required source/artifact inputs and unresolved suite/hardware/quality evidence.
 The verifier deliberately reports `qualification = "not-evaluated"`; it is not a
 numerical evaluator or release-qualification tool.

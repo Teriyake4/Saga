@@ -12,6 +12,7 @@ referenced, independently hashed patch files. Run
 | cpp-httplib | v0.28.0 + Saga hardening patch | MIT (`cpp-httplib/LICENSE`) | Cross-platform HTTP transport behind `saga::api::Server` |
 | nlohmann/json | v3.11.3 | MIT (`json/LICENSE`) | Structured protocol errors and operational logs |
 | toml++ | v3.4.0 | MIT (`tomlplusplus/LICENSE`) | Strict TOML configuration |
+| stb_image | v2.30 at `f7b2fcb360fc7c611e5b27f6aeb456e40b559210` | MIT or Unlicense (`stb-image/LICENSE`; Saga selects MIT) | Optional PNG/JPEG decoder adapter |
 
 The HTTP pin was advanced from the initially considered v0.18.3 to v0.28.0
 before build integration because it supports an explicit header-count bound.
@@ -50,5 +51,8 @@ full HTTP conformance or production remote-exposure qualification.
 
 Builds do not download dependencies or execute remote configuration scripts.
 No inference-engine source code has been copied into these dependencies.
-Image-decoding/backend dependencies are deferred to the relevant milestone and
-are not silently replaced with mock vision implementations.
+The optional image decoder is isolated in `saga_image_decoder`, disabled by default,
+and is not part of the text-only server. Its exact upstream commit URL, file sizes,
+and SHA-256 pins are in `lock.json`; use the MIT alternative in the included
+stb_image dual-license text. No inference-engine source code has been copied into
+these dependencies.
