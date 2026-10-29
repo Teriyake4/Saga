@@ -16,14 +16,27 @@ jobs:
           python-version: '3.12'
       - name: Verify native Windows build and install
         shell: pwsh
-        run: .\tools\windows\verify.ps1 -Configuration '${{ matrix.configuration }}'
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw 'vswhere.exe is missing' }
+          $vsInstanceId = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property instanceId
+          if ($LASTEXITCODE -ne 0 -or -not $vsInstanceId) { throw 'Visual Studio C++ build tools instance was not found' }
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Visual Studio installation path was not found' }
+          Import-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
+          Enter-VsDevShell -VsInstanceId $vsInstanceId -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          if ('${{ matrix.configuration }}' -eq 'Debug') {
+            .\tools\windows\verify.ps1 -Configuration '${{ matrix.configuration }}' -EnableImageDecoder
+          } else {
+            .\tools\windows\verify.ps1 -Configuration '${{ matrix.configuration }}'
+          }
       - name: Retain Windows build evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-${{ matrix.configuration }}-evidence
           path: build/windows-evidence/
-          if-no-files-found: warn
+          if-no-files-found: error
   macos:
     strategy:
       fail-fast: false
@@ -38,5 +51,47 @@ jobs:
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} --parallel 2
       - run: ctest --preset ${{ matrix.preset }}
-  # Linux is an optional manual procedure; no Linux job is required here.
-  # CUDA qualification is separate: native Linux and Windows on an original RTX 4080.
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [linux-gcc-debug, linux-gcc-release, linux-clang-debug, linux-clang-release, linux-clang-sanitized]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install host build prerequisites
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/linux-evidence
+          {
+            sudo apt-get update
+            sudo apt-get install --yes g++ clang libclang-rt-dev ninja-build
+            echo 'Tool versions:'
+            cmake --version
+            g++ --version
+            clang --version
+            ninja --version
+            python3 --version
+          } 2>&1 | tee build/linux-evidence/linux-prerequisites.log
+      - name: Verify Linux host build
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -B tools/linux/verify.py \
+            --preset ${{ matrix.preset }} \
+            --parallel 2 \
+            ${{ matrix.preset == 'linux-gcc-debug' && '--enable-image-decoder' || '' }} \
+            2>&1 | tee build/linux-evidence/linux-${{ matrix.preset }}-verify.log
+      - name: Retain Linux build evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: linux-${{ matrix.preset }}-evidence
+          path: build/linux-evidence/
+          if-no-files-found: error
+  # Linux host CI does not qualify CUDA or production performance; CUDA qualification is separate.
+  # ThreadSanitizer remains a manual, unqualified run and is not represented as passing host CI.

@@ -3,15 +3,19 @@ param(
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path,
     [string]$BuildRoot = '',
     [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug',
-    [string]$ConfigurePreset = ''
+    [string]$ConfigurePreset = '',
+    [switch]$EnableImageDecoder
 )
 $ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSVersion -lt [version]'7.4') { throw 'PowerShell 7.4 or newer is required for byte-preserving native output capture' }
+if (-not [OperatingSystem]::IsWindows()) { throw 'verify.ps1 requires native Windows' }
+if (-not (Get-Command cl -ErrorAction SilentlyContinue)) { throw 'MSVC compiler is unavailable; enter an x64 Visual Studio developer shell first' }
 if (-not $ConfigurePreset) { $ConfigurePreset = 'windows-msvc-' + $Configuration.ToLowerInvariant() }
 $SourceRoot = [IO.Path]::GetFullPath($SourceRoot)
 if (-not $BuildRoot) { $BuildRoot = Join-Path $SourceRoot 'build/windows-evidence' }
 $BuildRoot = [IO.Path]::GetFullPath($BuildRoot)
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$evidence = Join-Path $BuildRoot "$Configuration-$stamp"
+$evidence = Join-Path $BuildRoot "$Configuration-$stamp-$([guid]::NewGuid().ToString('N').Substring(0,8))"
 $binary = Join-Path $evidence 'binary'
 $install = Join-Path $evidence 'installed application with spaces'
 New-Item -ItemType Directory -Force -Path $binary, $install | Out-Null
@@ -40,10 +44,23 @@ try {
         $value = [Environment]::GetEnvironmentVariable($name)
         if ($value) { "ENV $name=$value" | Tee-Object -FilePath $log -Append }
     }
+    $evidenceTool = Join-Path $SourceRoot 'tools/m1_evidence.py'
+    Invoke-Checked 'Source snapshot before build' 'python' @('-B', $evidenceTool, 'snapshot', $SourceRoot, (Join-Path $evidence 'source-before.json'))
     Invoke-Checked 'CMake version' 'cmake' @('--version')
-    Invoke-Checked 'Configure' 'cmake' @('-S', $SourceRoot, '-B', $binary, '--preset', $ConfigurePreset, "-DCMAKE_INSTALL_PREFIX=$install")
+    $versionSource = Join-Path $evidence 'compiler-version.cpp'
+    'int main() { return 0; }' | Set-Content -Path $versionSource -Encoding utf8NoBOM
+    Invoke-Checked 'MSVC compiler version' 'cl' @('/nologo', '/Bv', '/c', $versionSource, "/Fo$(Join-Path $evidence 'compiler-version.obj')")
+    $configureArgs = @('-S', $SourceRoot, '-B', $binary, '--preset', $ConfigurePreset, "-DCMAKE_INSTALL_PREFIX=$install")
+    if ($EnableImageDecoder) { $configureArgs += '-DSAGA_ENABLE_IMAGE_DECODER=ON' }
+    Invoke-Checked 'Configure' 'cmake' $configureArgs
     $cache = Join-Path $binary 'CMakeCache.txt'
     if (-not (Test-Path $cache)) { throw 'Configure succeeded but CMakeCache.txt is absent' }
+    Copy-Item $cache (Join-Path $evidence 'CMakeCache.txt')
+    $compilerFacts = Join-Path $evidence 'compiler-facts'
+    New-Item -ItemType Directory -Path $compilerFacts | Out-Null
+    $compilerFiles = @(Get-ChildItem (Join-Path $binary 'CMakeFiles') -Recurse -File -Include 'CMakeCXXCompiler.cmake')
+    if ($compilerFiles.Count -eq 0) { throw 'CMake compiler facts are missing' }
+    $compilerFiles | Copy-Item -Destination $compilerFacts
     Get-Content $cache | Select-String '^(CMAKE_(CXX_COMPILER|CXX_COMPILER_ID|CXX_COMPILER_VERSION|MSVC_RUNTIME_LIBRARY|GENERATOR|INSTALL_PREFIX)|SAGA_)' | Tee-Object -FilePath $log -Append
     Invoke-Checked 'Build' 'cmake' @('--build', $binary, '--config', $Configuration, '--parallel', '2', '--verbose')
     Invoke-Checked 'CTest' 'ctest' @('--test-dir', $binary, '-C', $Configuration, '--output-on-failure')
@@ -58,11 +75,16 @@ try {
     Invoke-Checked 'Installed model config self-check (single-model INI)' $server @('--config', $installedConfig, '--model-config', $installedModelConfig, '--check-config')
     Invoke-Checked 'Dependency hashes' 'python' @('-B', (Join-Path $SourceRoot 'tools/verify_dependencies.py'))
     Invoke-Checked 'Source verifier tests and hashes retained by CTest' 'ctest' @('--test-dir', $binary, '-C', $Configuration, '--output-on-failure', '-R', 'dependency_hashes|source_manifest_structure|source_verifier_tests')
+    Invoke-Checked 'Source snapshot after build and comparison' 'python' @('-B', $evidenceTool, 'snapshot', $SourceRoot, (Join-Path $evidence 'source-after.json'))
+    Invoke-Checked 'Source snapshot comparison' 'python' @('-B', $evidenceTool, 'compare', (Join-Path $evidence 'source-before.json'), (Join-Path $evidence 'source-after.json'))
     'RESULT: PASS' | Tee-Object -FilePath $log -Append
 } catch {
     "RESULT: FAIL`nERROR: $_" | Tee-Object -FilePath $log -Append
     throw
 } finally {
-    if ($pushedLocation) { Pop-Location }
-    Stop-Transcript | Out-Null
+    try {
+        if ($pushedLocation) { Pop-Location }
+    } finally {
+        Stop-Transcript | Out-Null
+    }
 }

@@ -13,13 +13,9 @@ substitute for those runs.
 not load a model, import inference kernels, require external math/JSON libraries,
 benchmark throughput, or qualify serving readiness.
 
-Limited host validation performed here: the extracted JSON escaping helper was
-compiled separately with Clang C++20 and round-tripped all 256 byte values through
-a JSON parser; a scalar check verified all 256 exact fixture expectations and
-BF16 input representability; all 17 declared checks have matching execution
-steps. This did **not** compile the `.cu` translation unit or exercise any CUDA
-API. Editor CUDA diagnostics are blocked by missing CUDA headers/toolkit/device
-libraries, not a successful CUDA syntax check.
+This source has not been compiled or run as CUDA here. Host mock tests for the
+resource-owner layer are not CUDA qualification and do not exercise this `.cu`
+translation unit or a CUDA device. Source-level review is not a CUDA syntax check.
 
 ## What actually runs
 
@@ -49,14 +45,36 @@ ordinal. There is deliberately **no other-device override**. Qualification requi
   `cudaFuncGetAttributes` must report `binaryVersion == 89` for each loaded
   kernel. PTX version is recorded separately, not treated as physical GPU identity.
 - All allocations, host/device copies, output initialization, launches,
-  `cudaGetLastError`, explicit device synchronization, and device frees are
-  checked. Noncopyable RAII buffers free successful partial allocations on errors.
-  Destructors retain the first cleanup error without throwing; cleanup failure
-  also causes a nonzero exit. Results are read back only after synchronization.
+  `cudaGetLastError`, event synchronization, attempted stream draining, and
+  device frees are checked. Every copy, memset, and kernel launch uses one
+  explicit nonblocking stream; a successful completion-event synchronization
+  establishes the host-read boundary. This includes both BF16 H2D inputs,
+  avoiding default-stream ordering assumptions. Noncopyable RAII buffers free
+  successful partial allocations on errors. Destructors retain the first cleanup
+  error without throwing; cleanup failure also causes a nonzero exit. Results
+  are read back only after successful event synchronization.
+- Lifetime order is deliberate: the report outlives `run_probe`; the optional
+  device guard is declared before probe resources and emplaced within the named
+  device-selection check. Host arrays and device buffers precede the event, and
+  the event precedes the stream, so reverse destruction attempts to synchronize
+  and destroy the stream before destroying the event, buffers, or host arrays;
+  device restoration is last. A successful stream synchronization drains
+  submitted work before those dependents are destroyed. If synchronization
+  fails, the failure is retained and reported, but it is not a successful
+  physical-work fence and does not guarantee dependent storage is safe to
+  destroy. This standalone probe is fail-stop on such errors and is not a
+  serving-safe fence or recovery mechanism. `resource_cleanup` records
+  restoration/resource errors before the final compatibility check
+  `allocation_cleanup`, which covers all resource cleanup, not allocations alone.
 
 Checks fail fast; later checks remain `not_run`, never assumed to have passed.
-The allocation-cleanup check still runs after failure (and succeeds vacuously if
-nothing was allocated). A rejected device therefore does not execute the kernels.
+The `resource_cleanup` and compatibility `allocation_cleanup` checks still run
+on failure (and succeed vacuously if no resources were created). A rejected
+device therefore does not execute the kernels. Cleanup checks report retained
+errors but cannot establish that asynchronous work has stopped when stream
+synchronization fails; the process exits nonzero and must not be treated as
+recoverable or safe for continued serving. The report declares 19 named checks,
+each with a corresponding execution step.
 
 ## Resource queries and their limits
 

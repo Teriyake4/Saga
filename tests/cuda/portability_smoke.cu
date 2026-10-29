@@ -1,16 +1,21 @@
 #include <cuda_runtime.h>
 #include <cuda_bf16.h>
 #include <mma.h>
+#include "../../src/backends/cuda/resource_owners.h"
 
 #include <array>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
+#include <type_traits>
+
+using saga::cuda_internal::DeviceBuffer;
 
 namespace {
 constexpr int warp_size = 32;
@@ -113,7 +118,7 @@ struct Report {
     int cooperative_attribute = -1;
     int cp_async_arch = 0;
     int bf16_arch = 0;
-    cudaError_t cleanup_error = cudaSuccess;
+    saga::cuda_internal::CleanupReport cleanup;
     std::string error;
     KernelResources cp_async{"cp_async_smoke"};
     KernelResources bf16{"bf16_wmma_smoke"};
@@ -122,8 +127,9 @@ struct Report {
         {"device_properties"}, {"original_rtx_4080"}, {"compute_capability_sm89"},
         {"sm_count_76"}, {"memory_query"}, {"cooperative_support_query"},
         {"cp_async_resources"}, {"bf16_wmma_resources"}, {"allocations_alignment"},
-        {"cp_async_launch_and_sync"}, {"cp_async_result"},
-        {"bf16_wmma_launch_and_sync"}, {"bf16_wmma_result"}, {"allocation_cleanup"}
+        {"resource_initialization"}, {"cp_async_launch_and_sync"}, {"cp_async_result"},
+        {"bf16_wmma_launch_and_sync"}, {"bf16_wmma_result"},
+        {"resource_cleanup"}, {"allocation_cleanup"}
     };
 };
 
@@ -144,27 +150,7 @@ void step(Report& report, std::string_view name, Function&& function) {
     throw std::logic_error("unknown probe check");
 }
 
-template <typename T>
-class DeviceBuffer {
-public:
-    explicit DeviceBuffer(cudaError_t& cleanup_error) noexcept : cleanup_error_(cleanup_error) {}
-    void allocate(std::size_t count) {
-        require(data_ == nullptr, "device buffer already allocated");
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&data_), count * sizeof(T)), "cudaMalloc");
-    }
-    ~DeviceBuffer() noexcept {
-        if (data_ != nullptr) {
-            const auto result = cudaFree(data_);
-            if (cleanup_error_ == cudaSuccess && result != cudaSuccess) cleanup_error_ = result;
-        }
-    }
-    DeviceBuffer(const DeviceBuffer&) = delete;
-    DeviceBuffer& operator=(const DeviceBuffer&) = delete;
-    T* get() const noexcept { return data_; }
-private:
-    T* data_ = nullptr;
-    cudaError_t& cleanup_error_;
-};
+
 
 template <typename Kernel>
 void query_resources(Kernel kernel, KernelResources& result) {
@@ -193,10 +179,11 @@ void run_probe(Report& report, int argc, char** argv) {
         cuda_check(cudaDriverGetVersion(&report.driver_version), "cudaDriverGetVersion");
         cuda_check(cudaRuntimeGetVersion(&report.runtime_version), "cudaRuntimeGetVersion");
     });
+    std::optional<saga::cuda_internal::DeviceGuard> device_guard;
     step(report, "device_selection", [&] {
         cuda_check(cudaGetDeviceCount(&report.device_count), "cudaGetDeviceCount");
         require(report.device < report.device_count, "selected CUDA device is unavailable");
-        cuda_check(cudaSetDevice(report.device), "cudaSetDevice");
+        device_guard.emplace(report.device, report.cleanup);
     });
     step(report, "device_properties", [&] {
         cuda_check(cudaGetDeviceProperties(&report.properties, report.device), "cudaGetDeviceProperties");
@@ -252,12 +239,18 @@ void run_probe(Report& report, int argc, char** argv) {
         }
     }
 
-    DeviceBuffer<uint4> input(report.cleanup_error);
-    DeviceBuffer<uint4> output(report.cleanup_error);
-    DeviceBuffer<__nv_bfloat16> left(report.cleanup_error);
-    DeviceBuffer<__nv_bfloat16> right(report.cleanup_error);
-    DeviceBuffer<float> product(report.cleanup_error);
-    DeviceBuffer<int> arch(report.cleanup_error);
+    DeviceBuffer<uint4> input(report.cleanup);
+    DeviceBuffer<uint4> output(report.cleanup);
+    DeviceBuffer<__nv_bfloat16> left(report.cleanup);
+    DeviceBuffer<__nv_bfloat16> right(report.cleanup);
+    DeviceBuffer<float> product(report.cleanup);
+    DeviceBuffer<int> arch(report.cleanup);
+    saga::cuda_internal::Event completion(report.cleanup);
+    saga::cuda_internal::Stream stream(report.cleanup);
+    step(report, "resource_initialization", [&] {
+        require(stream.get() != nullptr && completion.get() != nullptr,
+                "nonblocking stream or completion event was not initialized");
+    });
     step(report, "allocations_alignment", [&] {
         input.allocate(warp_size);
         output.allocate(warp_size);
@@ -273,19 +266,22 @@ void run_probe(Report& report, int argc, char** argv) {
                 "cp.async/WMMA device buffer alignment requirements not met");
     });
     step(report, "cp_async_launch_and_sync", [&] {
-        cuda_check(cudaMemcpy(input.get(), source.data(), sizeof(source), cudaMemcpyHostToDevice),
-                   "cudaMemcpy(cp.async input H2D)");
-        cuda_check(cudaMemset(output.get(), 0, sizeof(copied)), "cudaMemset(cp.async output)");
-        cuda_check(cudaMemset(arch.get(), 0, sizeof(int)), "cudaMemset(cp.async arch)");
-        cp_async_smoke<<<1, warp_size>>>(input.get(), output.get(), arch.get());
+        cuda_check(cudaMemcpyAsync(input.get(), source.data(), sizeof(source), cudaMemcpyHostToDevice, stream.get()),
+                   "cudaMemcpyAsync(cp.async input H2D)");
+        cuda_check(cudaMemsetAsync(output.get(), 0, sizeof(copied), stream.get()), "cudaMemsetAsync(cp.async output)");
+        cuda_check(cudaMemsetAsync(arch.get(), 0, sizeof(int), stream.get()), "cudaMemsetAsync(cp.async arch)");
+        cp_async_smoke<<<1, warp_size, 0, stream.get()>>>(input.get(), output.get(), arch.get());
         cuda_check(cudaGetLastError(), "cp_async_smoke launch");
-        cuda_check(cudaDeviceSynchronize(), "cp_async_smoke synchronization");
+        completion.record(stream.get());
+        completion.synchronize();
     });
     step(report, "cp_async_result", [&] {
-        cuda_check(cudaMemcpy(copied.data(), output.get(), sizeof(copied), cudaMemcpyDeviceToHost),
-                   "cudaMemcpy(cp.async output D2H)");
-        cuda_check(cudaMemcpy(&report.cp_async_arch, arch.get(), sizeof(int), cudaMemcpyDeviceToHost),
-                   "cudaMemcpy(cp.async arch D2H)");
+        cuda_check(cudaMemcpyAsync(copied.data(), output.get(), sizeof(copied), cudaMemcpyDeviceToHost, stream.get()),
+                   "cudaMemcpyAsync(cp.async output D2H)");
+        cuda_check(cudaMemcpyAsync(&report.cp_async_arch, arch.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()),
+                   "cudaMemcpyAsync(cp.async arch D2H)");
+        completion.record(stream.get());
+        completion.synchronize();
         require(report.cp_async_arch == 890, "cp.async kernel was not compiled for __CUDA_ARCH__=890");
         for (int lane = 0; lane < warp_size; ++lane) {
             const auto& x = source[lane];
@@ -295,21 +291,24 @@ void run_probe(Report& report, int argc, char** argv) {
         }
     });
     step(report, "bf16_wmma_launch_and_sync", [&] {
-        cuda_check(cudaMemcpy(left.get(), a.data(), sizeof(a), cudaMemcpyHostToDevice),
-                   "cudaMemcpy(WMMA A H2D)");
-        cuda_check(cudaMemcpy(right.get(), b.data(), sizeof(b), cudaMemcpyHostToDevice),
-                   "cudaMemcpy(WMMA B H2D)");
-        cuda_check(cudaMemset(product.get(), 0, sizeof(actual)), "cudaMemset(WMMA output)");
-        cuda_check(cudaMemset(arch.get(), 0, sizeof(int)), "cudaMemset(WMMA arch)");
-        bf16_wmma_smoke<<<1, warp_size>>>(left.get(), right.get(), product.get(), arch.get());
+        cuda_check(cudaMemcpyAsync(left.get(), a.data(), sizeof(a), cudaMemcpyHostToDevice, stream.get()),
+                   "cudaMemcpyAsync(WMMA A H2D)");
+        cuda_check(cudaMemcpyAsync(right.get(), b.data(), sizeof(b), cudaMemcpyHostToDevice, stream.get()),
+                   "cudaMemcpyAsync(WMMA B H2D)");
+        cuda_check(cudaMemsetAsync(product.get(), 0, sizeof(actual), stream.get()),
+                   "cudaMemsetAsync(WMMA output)");
+        cuda_check(cudaMemsetAsync(arch.get(), 0, sizeof(int), stream.get()), "cudaMemsetAsync(WMMA arch)");
+        bf16_wmma_smoke<<<1, warp_size, 0, stream.get()>>>(left.get(), right.get(), product.get(), arch.get());
         cuda_check(cudaGetLastError(), "bf16_wmma_smoke launch");
-        cuda_check(cudaDeviceSynchronize(), "bf16_wmma_smoke synchronization");
+        completion.record(stream.get()); completion.synchronize();
     });
     step(report, "bf16_wmma_result", [&] {
-        cuda_check(cudaMemcpy(actual.data(), product.get(), sizeof(actual), cudaMemcpyDeviceToHost),
-                   "cudaMemcpy(WMMA output D2H)");
-        cuda_check(cudaMemcpy(&report.bf16_arch, arch.get(), sizeof(int), cudaMemcpyDeviceToHost),
-                   "cudaMemcpy(WMMA arch D2H)");
+        cuda_check(cudaMemcpyAsync(actual.data(), product.get(), sizeof(actual), cudaMemcpyDeviceToHost, stream.get()),
+                   "cudaMemcpyAsync(WMMA output D2H)");
+        cuda_check(cudaMemcpyAsync(&report.bf16_arch, arch.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()),
+                   "cudaMemcpyAsync(WMMA arch D2H)");
+        completion.record(stream.get());
+        completion.synchronize();
         require(report.bf16_arch == 890, "WMMA kernel was not compiled for __CUDA_ARCH__=890");
         for (int i = 0; i < matrix_elements; ++i) {
             require(actual[i] == expected[i], "BF16 WMMA mismatch at row " + std::to_string(i / 16) +
@@ -406,7 +405,17 @@ int main(int argc, char** argv) {
         report.error = error.what();
     }
     try {
-        step(report, "allocation_cleanup", [&] { cuda_check(report.cleanup_error, "cudaFree allocation cleanup"); });
+        step(report, "resource_cleanup", [&] {
+            cuda_check(report.cleanup.first_error, "CUDA resource cleanup before allocation cleanup");
+        });
+    } catch (const std::exception& error) {
+        if (!report.error.empty()) report.error += "; ";
+        report.error += error.what();
+    }
+    try {
+        step(report, "allocation_cleanup", [&] {
+            cuda_check(report.cleanup.first_error, "CUDA resource cleanup (stream, event, buffers, device restoration)");
+        });
     } catch (const std::exception& error) {
         if (!report.error.empty()) report.error += "; ";
         report.error += error.what();

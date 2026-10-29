@@ -115,21 +115,31 @@ int main() {
         }, "environment max bound");
 
 #ifndef _WIN32
-        struct sigaction previous {};
+        struct sigaction previous_int {};
+        struct sigaction previous_term {};
         struct sigaction custom {};
         custom.sa_handler = SIG_IGN;
         sigemptyset(&custom.sa_mask);
-        check(sigaction(SIGTERM, &custom, &previous) == 0, "install prior handler");
+        check(sigaction(SIGINT, &custom, &previous_int) == 0, "install prior SIGINT handler");
+        check(sigaction(SIGTERM, &custom, &previous_term) == 0, "install prior SIGTERM handler");
         {
             saga::platform::ShutdownSignals signals;
             throws<std::logic_error>([] { saga::platform::ShutdownSignals second; },
                                      "duplicate registration");
+            check(raise(SIGINT) == 0 && signals.requested(), "registered SIGINT sets request");
+        }
+        {
+            saga::platform::ShutdownSignals signals;
             check(raise(SIGTERM) == 0 && signals.requested(), "registered SIGTERM sets request");
         }
-        struct sigaction current {};
-        check(sigaction(SIGTERM, nullptr, &current) == 0 && current.sa_handler == SIG_IGN,
+        struct sigaction current_int {};
+        struct sigaction current_term {};
+        check(sigaction(SIGINT, nullptr, &current_int) == 0 && current_int.sa_handler == SIG_IGN,
+              "restore prior SIGINT handler");
+        check(sigaction(SIGTERM, nullptr, &current_term) == 0 && current_term.sa_handler == SIG_IGN,
               "restore prior SIGTERM handler");
-        check(sigaction(SIGTERM, &previous, nullptr) == 0, "restore original process handler");
+        check(sigaction(SIGINT, &previous_int, nullptr) == 0, "restore original SIGINT handler");
+        check(sigaction(SIGTERM, &previous_term, nullptr) == 0, "restore original SIGTERM handler");
 #else
         {
             saga::platform::ShutdownSignals signals;

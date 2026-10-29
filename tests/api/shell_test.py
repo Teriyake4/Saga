@@ -10,6 +10,7 @@ import socket
 import subprocess
 import tempfile
 import time
+from unittest import mock
 
 
 def check(condition, message):
@@ -153,19 +154,21 @@ def authentication_tests(port, key):
 
 
 class RunningServer:
-    def __init__(self, binary, config, directory, key=None):
+    def __init__(self, binary, config, directory, key=None, port=0):
         self.log_path = directory / ("auth.log" if key else "server.log")
         self.log_file = self.log_path.open("wb")
-        environment = os.environ.copy()
-        environment.pop("SAGA_API_KEY", None)
-        if key:
-            environment["SAGA_API_KEY"] = key
-        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-        self.process = subprocess.Popen([binary, "--config", str(config), "--port", "0"],
-                                        stdout=subprocess.DEVNULL, stderr=self.log_file,
-                                        stdin=subprocess.DEVNULL, env=environment, creationflags=flags)
+        self.process = None
         self.port = None
+        self.shutdown_signal = signal.SIGTERM
         try:
+            environment = os.environ.copy()
+            environment.pop("SAGA_API_KEY", None)
+            if key:
+                environment["SAGA_API_KEY"] = key
+            flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+            self.process = subprocess.Popen([binary, "--config", str(config), "--port", str(port)],
+                                            stdout=subprocess.DEVNULL, stderr=self.log_file,
+                                            stdin=subprocess.DEVNULL, env=environment, creationflags=flags)
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
                 check(self.process.poll() is None, "server exited during startup: " + self.logs())
@@ -182,9 +185,12 @@ class RunningServer:
                 time.sleep(0.02)
             raise AssertionError("startup deadline exceeded")
         except BaseException:
-            self.process.kill()
-            self.process.wait(timeout=5)
-            self.log_file.close()
+            try:
+                if self.process is not None and self.process.poll() is None:
+                    self.process.kill()
+                    self.process.wait(timeout=5)
+            finally:
+                self.log_file.close()
             raise
 
     def logs(self):
@@ -193,8 +199,12 @@ class RunningServer:
     def stop(self):
         try:
             if self.process.poll() is None:
-                self.process.send_signal(signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGTERM)
-                check(self.process.wait(timeout=10) == 0, "shutdown failed: " + self.logs())
+                shutdown_signal = signal.CTRL_BREAK_EVENT if os.name == "nt" else self.shutdown_signal
+                self.process.send_signal(shutdown_signal)
+            return_code = self.process.wait(timeout=10)
+            check(return_code == 0, f"shutdown failed with exit code {return_code}: " + self.logs())
+            events = [json.loads(line).get("event") for line in self.logs().splitlines()]
+            check("listener_stopped" in events, "successful listener_stopped event: " + self.logs())
         finally:
             if self.process.poll() is None:
                 self.process.kill()
@@ -256,6 +266,54 @@ def main():
                   "unsupported key startup error explains bounded b64token grammar")
             check(b"decod" not in result.stderr, "key startup error must not blame header decoding")
             check(invalid_key.encode() not in result.stderr, "unsupported key is not logged")
+        original_path_open = Path.open
+        opened_logs = []
+
+        def track_open(path, *open_args, **open_kwargs):
+            opened = original_path_open(path, *open_args, **open_kwargs)
+            opened_logs.append(opened)
+            return opened
+
+        with mock.patch.object(Path, "open", track_open):
+            try:
+                RunningServer(str(directory / "missing-saga-server"), config, directory)
+            except FileNotFoundError:
+                pass
+            else:
+                raise AssertionError("missing executable must fail to spawn")
+        check(len(opened_logs) == 1 and opened_logs[0].closed,
+              "spawn failure closes the opened server log")
+
+        abnormal = RunningServer(binary, config, directory)
+        abnormal.process.kill()
+        abnormal.process.wait(timeout=5)
+        try:
+            abnormal.stop()
+        except AssertionError as error:
+            check("exit code" in str(error), "already-exited abnormal process reports its exit status")
+        else:
+            raise AssertionError("stop must reject an already-exited abnormal process")
+
+        # A real occupied listener must fail as structured startup, then the
+        # exact same port must be reusable after releasing the blocker and server.
+        blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            if os.name == "nt":
+                blocker.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            blocker.bind(("127.0.0.1", 0))
+            blocker.listen()
+            occupied_port = blocker.getsockname()[1]
+            failed = subprocess.run([binary, "--config", str(config), "--host", "127.0.0.1",
+                                     "--port", str(occupied_port)], capture_output=True, timeout=10, env=environment)
+            check(failed.returncode != 0 and json.loads(failed.stderr)["event"] == "startup_failed",
+                  "occupied port must fail with structured startup_failed")
+        finally:
+            blocker.close()
+        first = RunningServer(binary, config, directory, port=occupied_port)
+        first.stop()
+        second = RunningServer(binary, config, directory, port=occupied_port)
+        second.stop()
+
         for repetition in range(2):
             server = RunningServer(binary, config, directory)
             idle = None
@@ -294,6 +352,8 @@ def main():
                     idle.sendall(b"GET /healthz HTTP/1.1\r\n")
             finally:
                 try:
+                    if os.name != "nt" and repetition == 0:
+                        server.shutdown_signal = signal.SIGINT
                     server.stop()
                 finally:
                     if idle:
