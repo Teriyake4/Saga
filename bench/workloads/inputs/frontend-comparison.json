@@ -1,0 +1,183 @@
+{
+  "compatibility_limits": [
+    "Byte-identical frontend files do not prove identical runtime loading or component-wide model compatibility.",
+    "Config geometry is reported for comparison only; weights, runtime support, dispatch, MTP head/weights, generation and quality are not verified.",
+    "Frontend inputs alone are not a frozen suite comparison."
+  ],
+  "config_geometry": {
+    "head_dim": {
+      "equal": true,
+      "gsq": 256,
+      "original": 256
+    },
+    "hidden_size": {
+      "equal": true,
+      "gsq": 5120,
+      "original": 5120
+    },
+    "intermediate_size": {
+      "equal": true,
+      "gsq": 17408,
+      "original": 17408
+    },
+    "max_position_embeddings": {
+      "equal": true,
+      "gsq": 262144,
+      "original": 262144
+    },
+    "mtp_num_hidden_layers": {
+      "equal": true,
+      "gsq": 1,
+      "original": 1
+    },
+    "mtp_use_dedicated_embeddings": {
+      "equal": true,
+      "gsq": false,
+      "original": false
+    },
+    "num_attention_heads": {
+      "equal": true,
+      "gsq": 24,
+      "original": 24
+    },
+    "num_hidden_layers": {
+      "equal": true,
+      "gsq": 64,
+      "original": 64
+    },
+    "num_key_value_heads": {
+      "equal": true,
+      "gsq": 4,
+      "original": 4
+    },
+    "vocab_size": {
+      "equal": true,
+      "gsq": 248320,
+      "original": 248320
+    }
+  },
+  "config_vocab_size": {
+    "gsq": 248320,
+    "original": 248320
+  },
+  "file_comparison": {
+    "chat_template.jinja": {
+      "byte_identical": true,
+      "gsq_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "original_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+    },
+    "tokenizer.json": {
+      "byte_identical": true,
+      "gsq_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "original_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+    },
+    "tokenizer_config.json": {
+      "byte_identical": true,
+      "gsq_sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+      "original_sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27"
+    }
+  },
+  "generation_config": {
+    "byte_identical": false,
+    "fields": {
+      "bos_token_id": {
+        "equal": true,
+        "gsq": 248044,
+        "original": 248044
+      },
+      "do_sample": {
+        "equal": true,
+        "gsq": true,
+        "original": true
+      },
+      "eos_token_id": {
+        "equal": true,
+        "gsq": [
+          248046,
+          248044
+        ],
+        "original": [
+          248046,
+          248044
+        ]
+      },
+      "min_p": {
+        "equal": false,
+        "gsq": 0.0,
+        "original": null
+      },
+      "pad_token_id": {
+        "equal": true,
+        "gsq": 248044,
+        "original": 248044
+      },
+      "presence_penalty": {
+        "equal": false,
+        "gsq": 0.0,
+        "original": null
+      },
+      "repetition_penalty": {
+        "equal": false,
+        "gsq": 1.0,
+        "original": null
+      },
+      "temperature": {
+        "equal": true,
+        "gsq": 1.0,
+        "original": 1.0
+      },
+      "top_k": {
+        "equal": true,
+        "gsq": 20,
+        "original": 20
+      },
+      "top_p": {
+        "equal": true,
+        "gsq": 0.95,
+        "original": 0.95
+      }
+    }
+  },
+  "tokenizer_special_bindings": {
+    "gsq": {
+      "bos_token": {
+        "content": "<|endoftext|>",
+        "id": 248044
+      },
+      "eos_token": {
+        "content": "<|im_end|>",
+        "id": 248046
+      },
+      "pad_token": {
+        "content": "<|endoftext|>",
+        "id": 248044
+      },
+      "unk_token": {
+        "content": null,
+        "id": null
+      }
+    },
+    "original": {
+      "bos_token": {
+        "content": "<|endoftext|>",
+        "id": 248044
+      },
+      "eos_token": {
+        "content": "<|im_end|>",
+        "id": 248046
+      },
+      "pad_token": {
+        "content": "<|endoftext|>",
+        "id": 248044
+      },
+      "unk_token": {
+        "content": null,
+        "id": null
+      }
+    }
+  },
+  "tokenizer_vocab_size": {
+    "gsq": 248077,
+    "original": 248077
+  }
+}

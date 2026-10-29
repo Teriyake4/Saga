@@ -1,0 +1,8 @@
+{
+  "id": "plain-128",
+  "class": "plain-chat",
+  "target_prompt_tokens": 128,
+  "max_new_tokens": 512,
+  "template_options": {"add_generation_prompt": true, "tools": [], "documents": [], "date_string": "2025-01-15", "enable_thinking": true, "reasoning_effort": "xhigh", "preserve_thinking": true, "add_vision_id": false},
+  "messages": [{"role": "user", "content": "Reply with a concise summary of the following test input. "}]
+}

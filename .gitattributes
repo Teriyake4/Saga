@@ -4,3 +4,9 @@
 /third_party/*/LICENSE -text
 /third_party/patches/*.patch -text
 /bench/reference/licenses/*.LICENSE -text
+# Workload input digests cover exact UTF-8 bytes, including newlines.
+/bench/workloads/**/*.json -text
+/bench/workloads/*.json -text
+/bench/reference/frontend-lock.json -text
+# Unified-diff blank context lines contain a significant leading space.
+/bench/reference/*.patch -text whitespace=-blank-at-eol

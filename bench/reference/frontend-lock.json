@@ -1,0 +1,148 @@
+{
+  "dependencies": {
+    "direct_pins": {
+      "Jinja2": "3.1.6",
+      "tokenizers": "0.22.1"
+    },
+    "lock_file": ".cache/m0-frontend/requirements.lock",
+    "lock_file_sha256": "87205440dfaa59f0d6aeab4b39600f90526d9a609b3967f577a86e2627b22cf4",
+    "note": "Complete installed transitive requirements and hashes for the captured macOS arm64/Python 3.9 wheels are in the local requirements.lock and wheelhouse. This lock is platform-specific; no cross-platform wheel hash is asserted.",
+    "packages": [
+      {
+        "installed_record_sha256": "7ec1cf20d1d45759e5053fedb5ed64a18230d3d9372c36704e5b4505c05c52e5",
+        "name": "tokenizers",
+        "version": "0.22.1"
+      },
+      {
+        "installed_record_sha256": "f0068d2f39d5ef3cab94757b15bc206bca1a6b8b78d92515af3d25d70d56324b",
+        "name": "Jinja2",
+        "version": "3.1.6"
+      },
+      {
+        "installed_record_sha256": "2ccc21bc1c6c335a603e20adc0d482b5d24278880af76c64676f3d006c572594",
+        "name": "MarkupSafe",
+        "version": "3.0.4"
+      }
+    ],
+    "python": "3.9.6"
+  },
+  "files": [
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3.8-27B/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/config.json?%2FQwen%2FQwen3.8-27B%2Fresolve%2F1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0%2Fconfig.json=&etag=%22706cebd746c4b6f2b1d1f892630867acfdfd3df8%22",
+      "local_path": "original/config.json",
+      "model": "original",
+      "name": "config.json",
+      "sha256": "191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+      "size": 4312,
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/resolve/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/config.json"
+    },
+    {
+      "final_url": "https://us.aws.cdn.hf.co/xet-bridge-us/6a72f2e302294c7d32dd278e/ddca7e708ff0da8902fdcef5209d5eea8bf922715733eb02f93026a37478e426?response-content-type=application%2Fjson%3B+charset%3Dutf-8&X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27tokenizer.json%3B+filename%3D%22tokenizer.json%22%3B&user_id=public&xip=hSLr2M_giqk&Expires=1793294036&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly91cy5hd3MuY2RuLmhmLmNvL3hldC1icmlkZ2UtdXMvNmE3MmYyZTMwMjI5NGM3ZDMyZGQyNzhlL2RkY2E3ZTcwOGZmMGRhODkwMmZkY2VmNTIwOWQ1ZWVhOGJmOTIyNzE1NzMzZWIwMmY5MzAyNmEzNzQ3OGU0MjZcXD9yZXNwb25zZS1jb250ZW50LXR5cGU9YXBwbGljYXRpb24lMkZqc29uJTNCK2NoYXJzZXQlM0R1dGYtOCZYLVhldC1DYXMtVWlkPXB1YmxpYyZyZXNwb25zZS1jb250ZW50LWRpc3Bvc2l0aW9uPWlubGluZSUzQitmaWxlbmFtZSUyQSUzRFVURi04JTI3JTI3dG9rZW5pemVyLmpzb24lM0IrZmlsZW5hbWUlM0QlMjJ0b2tlbml6ZXIuanNvbiUyMiUzQiZ1c2VyX2lkPXB1YmxpYyZ4aXA9aFNMcjJNX2dpcWsiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkVwb2NoVGltZSI6MTc5MzI5NDAzNn19fV19&Signature=MEQCIDUqd-FyX594frrilcJNS6yzn%7EBaRsCKzcyMjG1Clf8gAiB60-GUaghtnha8c2QqFyQQ7-d-B1KdjIGv-xp6y%7EriYw__&Key-Pair-Id=01KXEF4KZ1B6FV465MAWR4M21F&Hash-Algorithm=SHA256",
+      "local_path": "original/tokenizer.json",
+      "model": "original",
+      "name": "tokenizer.json",
+      "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "size": 12809320,
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/resolve/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/tokenizer.json"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3.8-27B/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/tokenizer_config.json?%2FQwen%2FQwen3.8-27B%2Fresolve%2F1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0%2Ftokenizer_config.json=&etag=%225de744b3fca2129d7186979ae47c06be33903243%22",
+      "local_path": "original/tokenizer_config.json",
+      "model": "original",
+      "name": "tokenizer_config.json",
+      "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+      "size": 17928,
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/resolve/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/tokenizer_config.json"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3.8-27B/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/chat_template.jinja?%2FQwen%2FQwen3.8-27B%2Fresolve%2F1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0%2Fchat_template.jinja=&etag=%22c0c686f9c38d70d179fb7b5f5aa7530bc913dda3%22",
+      "local_path": "original/chat_template.jinja",
+      "model": "original",
+      "name": "chat_template.jinja",
+      "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "size": 8952,
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/resolve/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/chat_template.jinja"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3.8-27B/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/generation_config.json?%2FQwen%2FQwen3.8-27B%2Fresolve%2F1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0%2Fgeneration_config.json=&etag=%22023756cfadf88e5bf69eefeee3e172f38c448d64%22",
+      "local_path": "original/generation_config.json",
+      "model": "original",
+      "name": "generation_config.json",
+      "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+      "size": 202,
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B/resolve/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/generation_config.json"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/config.json?%2FISTA-DASLab%2FQwen3.8-27B-3Bit-GSQ%2Fresolve%2Fb5ce0b76f60020a875dee4f6ec9d934cca4121e4%2Fconfig.json=&etag=%2230f9cc4038336a5147937b8030249bf6ce00834f%22",
+      "local_path": "gsq/config.json",
+      "model": "gsq",
+      "name": "config.json",
+      "sha256": "3c44b7ff4556e7779226d04448408aa727b8a2a0f893a2a2f2869aaaa6cbd384",
+      "size": 5038,
+      "source_revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
+      "url": "https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/resolve/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/config.json"
+    },
+    {
+      "final_url": "https://us.aws.cdn.hf.co/xet-bridge-us/6a86e4e93246288ddae53081/ddca7e708ff0da8902fdcef5209d5eea8bf922715733eb02f93026a37478e426?user_id=public&X-Xet-Cas-Uid=public&xip=hSLr2M_giqk&response-content-type=application%2Fjson%3B+charset%3Dutf-8&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27tokenizer.json%3B+filename%3D%22tokenizer.json%22%3B&Expires=1793294037&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly91cy5hd3MuY2RuLmhmLmNvL3hldC1icmlkZ2UtdXMvNmE4NmU0ZTkzMjQ2Mjg4ZGRhZTUzMDgxL2RkY2E3ZTcwOGZmMGRhODkwMmZkY2VmNTIwOWQ1ZWVhOGJmOTIyNzE1NzMzZWIwMmY5MzAyNmEzNzQ3OGU0MjZcXD91c2VyX2lkPXB1YmxpYyZYLVhldC1DYXMtVWlkPXB1YmxpYyZ4aXA9aFNMcjJNX2dpcWsmcmVzcG9uc2UtY29udGVudC10eXBlPWFwcGxpY2F0aW9uJTJGanNvbiUzQitjaGFyc2V0JTNEdXRmLTgmcmVzcG9uc2UtY29udGVudC1kaXNwb3NpdGlvbj1pbmxpbmUlM0IrZmlsZW5hbWUlMkElM0RVVEYtOCUyNyUyN3Rva2VuaXplci5qc29uJTNCK2ZpbGVuYW1lJTNEJTIydG9rZW5pemVyLmpzb24lMjIlM0IiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkVwb2NoVGltZSI6MTc5MzI5NDAzN319fV19&Signature=MEQCIAcEmTbMKIGmhWMX44Vlz8XoIuRGGMwHgOSEHKIeiCJ8AiAk3GlxXFg38qNMNVF4mbsYrOAwiWzv9lV4G8D1y5l%7EeA__&Key-Pair-Id=01KXEF4KZ1B6FV465MAWR4M21F&Hash-Algorithm=SHA256",
+      "local_path": "gsq/tokenizer.json",
+      "model": "gsq",
+      "name": "tokenizer.json",
+      "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "size": 12809320,
+      "source_revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
+      "url": "https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/resolve/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/tokenizer.json"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/tokenizer_config.json?%2FISTA-DASLab%2FQwen3.8-27B-3Bit-GSQ%2Fresolve%2Fb5ce0b76f60020a875dee4f6ec9d934cca4121e4%2Ftokenizer_config.json=&etag=%225de744b3fca2129d7186979ae47c06be33903243%22",
+      "local_path": "gsq/tokenizer_config.json",
+      "model": "gsq",
+      "name": "tokenizer_config.json",
+      "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+      "size": 17928,
+      "source_revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
+      "url": "https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/resolve/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/tokenizer_config.json"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/chat_template.jinja?%2FISTA-DASLab%2FQwen3.8-27B-3Bit-GSQ%2Fresolve%2Fb5ce0b76f60020a875dee4f6ec9d934cca4121e4%2Fchat_template.jinja=&etag=%22c0c686f9c38d70d179fb7b5f5aa7530bc913dda3%22",
+      "local_path": "gsq/chat_template.jinja",
+      "model": "gsq",
+      "name": "chat_template.jinja",
+      "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "size": 8952,
+      "source_revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
+      "url": "https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/resolve/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/chat_template.jinja"
+    },
+    {
+      "final_url": "https://huggingface.co/api/resolve-cache/models/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/generation_config.json?%2FISTA-DASLab%2FQwen3.8-27B-3Bit-GSQ%2Fresolve%2Fb5ce0b76f60020a875dee4f6ec9d934cca4121e4%2Fgeneration_config.json=&etag=%225ac712c89902fa974ecf835a6df6ff84603363ad%22",
+      "local_path": "gsq/generation_config.json",
+      "model": "gsq",
+      "name": "generation_config.json",
+      "sha256": "f0014f87ded8e9cc5f65bd85611fb4baa628141baa0b8bc611b690e2cf97b3ba",
+      "size": 280,
+      "source_revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
+      "url": "https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ/resolve/b5ce0b76f60020a875dee4f6ec9d934cca4121e4/generation_config.json"
+    }
+  ],
+  "models": {
+    "gsq": {
+      "repo": "ISTA-DASLab/Qwen3.8-27B-3Bit-GSQ",
+      "revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4"
+    },
+    "original": {
+      "repo": "Qwen/Qwen3.8-27B",
+      "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    }
+  },
+  "policy": {
+    "network_required_at_run_time": false,
+    "remote_code_executed": false,
+    "suite_status": "UNFROZEN",
+    "weights_downloaded": false
+  },
+  "schema": "m0-frontend-source-lock-v1"
+}
