@@ -1,0 +1,34 @@
+{
+  "status": "source-derived recurrent transition fixture; not full model/state qualification",
+  "revision": "yalding/ninfer-4080@2469b5752672ad597055af61fe28e8e7ced20056",
+  "precision": "oracle uses Python binary64; answers below are exact rational literals; tolerance abs=1e-12 rel=1e-12",
+  "provenance": {
+    "license": {"path": "LICENSE", "spdx": "Apache-2.0", "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"},
+    "sources": [
+      {"path": "src/ops/linear_attention/gated_delta_net/recurrent.cuh", "sha256": "53aed84686f85daf7000178e7cbeb5e3293e0ad88dae5662b5ee367e10ccc12e", "symbols": ["apply_gdn_transition", "readout_and_store", "run_recurrent_sequence"], "lines": "104-141, 616-639"},
+      {"path": "src/ops/kernel/gdn_gating.cuh", "sha256": "997f22f6b0d0a9ba393dd9c804e964d9e52d12cd6bd88879b5ce3eb42f35e962", "symbols": ["gdn_gating_kernel"], "lines": "15-27"},
+      {"path": "src/ops/linear_attention/gated_delta_net/common.cuh", "sha256": "901b8c7a5ce55f12ebd7e2ac8e4374201fd8ccd91bab57fde0280f6bd74d1f36", "symbols": ["head_map", "qk_head"], "lines": "92-121"},
+      {"path": "src/ops/kernel/causal_conv1d.cuh", "sha256": "fe30696472dd28ec9de15df1211f6ccce4b6b17dd432abee6bdf966c07153f7a", "symbols": ["causal_conv1d_decode_kernel", "causal_conv1d_prefill_kernel"], "lines": "73-100, 234-258"},
+      {"path": "model-cards/Qwen3.8-27B-GSQ3-NInfer/README.md", "sha256": "7ecb0d7e993651b0936bf096cf3dfbb9d265467b1a6020e5700d9ddc64d7fe5e", "symbols": ["artifact/model card metadata"], "lines": "48-74, 182-191"}
+    ],
+    "source_lock": "bench/reference/source-lock.json pins repository revision and records model-card/license hashes; the recurrent, gating, common and convolution CUDA files are local pinned-tree bytes hashed for this fixture, not separately enumerated lock inputs."
+  },
+  "contract": {
+    "state_shape": "[value_dimension, key_dimension]",
+    "input_order": "For each token: key, value, already transformed decay alpha=exp(g), beta, then query for readout.",
+    "update": "p_r = sum_c S[r,c]*k[c]; delta_r = beta*(v[r]-alpha*p_r); S_next[r,c] = alpha*S[r,c]+delta_r*k[c].",
+    "readout": "out[r] = output_scale*sum_c S_next[r,c]*q[c].",
+    "normalization_boundary": "The reference has an optional Q/K L2 normalization (epsilon 1e-6 in recurrent.cuh); fixture takes normalized-or-raw k and q as explicit input and does not emulate/choose the template flag.",
+    "gate_boundary": "Reference gating computes g=-exp(A_log[h])*softplus(a+dt_bias[h]) and beta=sigmoid(b). Fixture takes alpha=exp(g) and beta as inputs; it does not approximate softplus/sigmoid or choose weights/biases.",
+    "convolution": "The inspected conv kernel establishes causal depthwise width-4 tap order [oldest history x[t-3], x[t-2], x[t-1], current x[t]] with 3 history slots and SiLU. This new oracle intentionally covers the recurrent state transition only; convolution remains a separately identified missing fixture."
+  },
+  "case": {
+    "initial_state": [[1, 0], [0, 1]],
+    "steps": [
+      {"key": [1, 1], "value": [2, 0], "decay": 0.5, "beta": 0.5, "query": [1, 2], "output_scale": 0.5,
+       "expected_delta": ["3/4", "-1/4"], "expected_state": [["5/4", "3/4"], ["-1/4", "1/4"]], "expected_output": ["11/8", "1/8"]},
+      {"key": [2, -1], "value": [1, 3], "decay": 0.25, "beta": 0.5, "query": [1, 1], "output_scale": 0.25,
+       "expected_delta": ["9/32", "51/32"], "expected_state": [["7/8", "-3/32"], ["25/8", "-49/32"]], "expected_output": ["25/128", "51/128"]}
+    ]
+  }
+}
