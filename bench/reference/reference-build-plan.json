@@ -1,0 +1,51 @@
+{
+  "format_version": 1,
+  "repository": "yalding/ninfer-4080",
+  "revision": "2469b5752672ad597055af61fe28e8e7ced20056",
+  "source_root": ".cache/m0-reference/ninfer-4080-2469b5752672ad597055af61fe28e8e7ced20056",
+  "upstream_build_requirements": {
+    "cmake_minimum": "3.28",
+    "cxx_standard": 20,
+    "cuda_compiler_minimum": "12.8",
+    "cuda_architecture": "89",
+    "apps_option_default": true,
+    "model_download_required_for_build": false
+  },
+  "build_commands": [
+    ["cmake", "-S", ".cache/m0-reference/ninfer-4080-2469b5752672ad597055af61fe28e8e7ced20056", "-B", "<BUILD_DIR>", "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_CUDA_ARCHITECTURES=89", "-DNINFER_BUILD_APPS=ON", "-DBUILD_TESTING=OFF", "-DNINFER_BUILD_BENCHMARKS=OFF"],
+    ["cmake", "--build", "<BUILD_DIR>", "--config", "Release", "--target", "ninfer", "ninfer-serve", "--parallel", "<BOUNDED_JOB_COUNT>"]
+  ],
+  "expected_binaries": ["<BUILD_DIR>/apps/Release/ninfer.exe", "<BUILD_DIR>/apps/Release/ninfer-serve.exe", "<BUILD_DIR>/apps/ninfer", "<BUILD_DIR>/apps/ninfer-serve"],
+  "run_sites": {
+    "cli": "ninfer supports direct prompts / generation; inspect ninfer --help at the built revision before selecting frozen case options.",
+    "server": "ninfer-serve <artifact-directory> [options], see pinned scripts/run-ninfer-4080.sh and .bat for upstream option examples. Those scripts are not benchmark commands and must not be invoked blindly."
+  },
+  "dispatch_instrumentation": {
+    "patch": {
+      "path": "bench/reference/dispatch-audit.patch",
+      "sha256": "2ca883e385502b36cb59dfe1db89c17d09cedda442176216a3a2ee5d2757bfdf",
+      "applies_to_revision": "2469b5752672ad597055af61fe28e8e7ced20056",
+      "scope": ["Q3 linear projection dispatch A16/A8 route selection", "Q3 linear SwiGLU projection dispatch A16/A8 route selection"],
+      "source_file_sha256": {
+        "src/ops/linear/q3/q3_dispatch.cpp": "49a34b256ec826813a0323172513013b14b677105836a8d5c781390bdb677f41",
+        "src/ops/linear_swiglu/q3/q3_linear_swiglu.cu": "b77b88a0039a4f48b2d13295ed4994ead92af58a727ce97a8e98140deece843b"
+      },
+      "upstream_license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "trace_env": "NINFER_M0_Q3_DISPATCH_TRACE=1",
+      "phase": "unknown (no trustworthy phase is available at these dispatch call sites)",
+      "selection_semantics": "selected route immediately before launch call; not confirmation of kernel completion",
+      "graph_semantics": "cudaStreamIsCapturing emits graph-record-selection while capture is active; no graph replay execution event is emitted",
+      "patch_dry_run": "patch --dry-run --batch -p1 succeeds against the local pinned source tree",
+      "compile_or_hardware_validation": "not performed"
+    },
+    "coverage_gaps": [
+      "The patch does not instrument Q3 pair, Q3 other frontends, Q4/Q5/W8/FP8, linear-add, attention-input, GDN, non-Q3 SwiGLU, sampling, or other operators.",
+      "phase is deliberately unknown; these records cannot satisfy required prefill/decode/verification phase inventory entries.",
+      "No layer/model site identity is available here; the site labels identify C++ dispatch functions only.",
+      "Graph-record-selection proves route selection was recorded while capture was active, not that the graph was launched or the kernel executed during replay.",
+      "Selection records do not prove successful launch completion or GPU execution."
+    ],
+    "required_before_capture_can_complete": ["instrument and review every required operation/site", "provide trustworthy phase and layer mapping", "capture actual launch/replay execution separately", "freeze the complete site/phase inventory"]
+  },
+  "status": "build/run recipe only; Q3 dispatch selection patch available but unapplied/uncompiled; no measurements or complete dispatch capture claimed"
+}

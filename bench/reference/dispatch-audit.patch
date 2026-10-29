@@ -1,0 +1,173 @@
+diff --git a/src/ops/linear/q3/q3_dispatch_audit.h b/src/ops/linear/q3/q3_dispatch_audit.h
+new file mode 100644
+index 0000000..d0b86a1
+--- /dev/null
++++ b/src/ops/linear/q3/q3_dispatch_audit.h
+@@ -0,0 +1,51 @@
++// SPDX-License-Identifier: Apache-2.0
++// Optional Saga audit instrumentation for the Apache-2.0 NInfer-4080 source.
++// Copyright (c) 2026 Saga contributors.
++#pragma once
++
++#include <cuda_runtime.h>
++
++#include <atomic>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++
++namespace ninfer::ops::detail {
++
++inline void q3_dispatch_audit(const char* site, const char* dispatch, const char* route,
++                             const char* kernel, std::int32_t m, std::int32_t n,
++                             std::int32_t k, cudaStream_t stream) {
++    static const bool enabled = [] {
++        const char* value = std::getenv("NINFER_M0_Q3_DISPATCH_TRACE");
++        return value != nullptr && value[0] == '1' && value[1] == '\0';
++    }();
++    if (!enabled) { return; }
++
++    static std::atomic<std::uint64_t> next_record{1};
++    const std::uint64_t record_id = next_record.fetch_add(1, std::memory_order_relaxed);
++    cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
++    const cudaError_t query = cudaStreamIsCapturing(stream, &capture_status);
++    const char* event = "launch-selection";
++    const char* capture = "none";
++    if (query != cudaSuccess) {
++        event = "capture-query-error";
++        capture = "query-error";
++    } else if (capture_status == cudaStreamCaptureStatusActive) {
++        event = "graph-record-selection";
++        capture = "active";
++    } else if (capture_status == cudaStreamCaptureStatusInvalidated) {
++        event = "capture-invalidated-selection";
++        capture = "invalidated";
++    }
++
++    std::fprintf(stderr,
++                 "M0DISPATCH {\"schema\":1,\"record_id\":%llu,\"site\":\"%s\","
++                 "\"phase\":\"unknown\",\"dispatch\":\"%s\",\"route\":\"%s\","
++                 "\"kernel\":\"%s\",\"m\":%d,\"n\":%d,\"k\":%d,"
++                 "\"selected\":true,\"event\":\"%s\",\"capture_state\":\"%s\"}\n",
++                 static_cast<unsigned long long>(record_id), site, dispatch, route, kernel, m, n, k,
++                 event, capture);
++    std::fflush(stderr);
++}
++
++} // namespace ninfer::ops::detail
+diff --git a/src/ops/linear/q3/q3_dispatch.cpp b/src/ops/linear/q3/q3_dispatch.cpp
+index 49a34b2..f791b20 100644
+--- a/src/ops/linear/q3/q3_dispatch.cpp
++++ b/src/ops/linear/q3/q3_dispatch.cpp
+@@ -1,6 +1,7 @@
+ #include "ops/linear/q3/q3_dispatch.h"
+ 
+ #include "core/layout.h"
++#include "ops/linear/q3/q3_dispatch_audit.h"
+ #include "ops/common/rowsplit_a8_quantize.h"
+ 
+ #include <stdexcept>
+@@ -76,15 +77,30 @@ void q3_dispatch(const Tensor& x, const Weight& w, Tensor& out, LinearPolicy policy,
+         A8G64Activation act = allocate_a8_g64_activation(*workspace, w.k, x.ne[1]);
+         a8_g64_quantize(x, act, stream);
+         if (x.ne[1] >= kQ3A8MinTokens) {
++            q3_dispatch_audit("q3_linear_projection_dispatch", "A8", "a8_tall_r128_c128",
++                              "launch_q3_mma_tall_a8_r128_c128", x.ne[1], w.n, w.k, stream);
+             launch_q3_mma_tall_a8_r128_c128(act, w, out, stream);
+         } else if (x.ne[1] <= kQ3SmallTNarrowTokens) {
++            q3_dispatch_audit("q3_linear_projection_dispatch", "A8", "a8_small_t_r32_c8",
++                              "launch_q3_mma_small_t_a8_r32_c8", x.ne[1], w.n, w.k, stream);
+             launch_q3_mma_small_t_a8_r32_c8(act, w, out, stream);
+         } else {
++            q3_dispatch_audit("q3_linear_projection_dispatch", "A8", "a8_small_t_r32_c16",
++                              "launch_q3_mma_small_t_a8_r32_c16", x.ne[1], w.n, w.k, stream);
+             launch_q3_mma_small_t_a8_r32_c16(act, w, out, stream);
+         }
+         return;
+     }
+     const Q3Launch launch =
+         select_q3_launch(w.n, w.k, static_cast<std::int32_t>(w.padded_shape[1]), x.ne[1], policy);
++    const char* kernel = "unknown_q3_a16_kernel";
++    if (launch == launch_q3_gemv_r8_c8_staged) { kernel = "launch_q3_gemv_r8_c8_staged"; }
++    else if (launch == launch_q3_mma_small_t_r32_c8) { kernel = "launch_q3_mma_small_t_r32_c8"; }
++    else if (launch == launch_q3_mma_small_t_r32_c16) { kernel = "launch_q3_mma_small_t_r32_c16"; }
++    else if (launch == launch_q3_mma_r32_c64) { kernel = "launch_q3_mma_r32_c64"; }
++    else if (launch == launch_q3_mma_tall_r128_c64) { kernel = "launch_q3_mma_tall_r128_c64"; }
++    else if (launch == launch_q3_mma_tall_r128_c128) { kernel = "launch_q3_mma_tall_r128_c128"; }
++    q3_dispatch_audit("q3_linear_projection_dispatch", "A16", kernel, kernel, x.ne[1], w.n, w.k,
++                      stream);
+     launch(x, w, out, stream);
+ }
+ 
+diff --git a/src/ops/linear_swiglu/q3/q3_linear_swiglu.cu b/src/ops/linear_swiglu/q3/q3_linear_swiglu.cu
+index b77b88a..c908fc1 100644
+--- a/src/ops/linear_swiglu/q3/q3_linear_swiglu.cu
++++ b/src/ops/linear_swiglu/q3/q3_linear_swiglu.cu
+@@ -5,5 +5,6 @@
+ #include "ops/common/rowsplit_a8_quantize.h"
+ #include "ops/linear/q3/q3_dispatch.h"
++#include "ops/linear/q3/q3_dispatch_audit.h"
+ #include "ops/linear/q3/q3_launch.h"
+ #include "ops/linear/q3/q3_rowsplit_gemv_staged.cuh"
+ #include "ops/linear/q3/q3_rowsplit_small_t_mma.cuh"
+@@ -89,10 +90,19 @@ void q3_linear_swiglu_dispatch(const Tensor& x, const Weight& w, Tensor& out,
+         A8G64Activation act = allocate_a8_g64_activation(ws, w.k, columns);
+         a8_g64_quantize(x, act, stream);
+         if (columns >= kQ3A8MinTokens) {
++            q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A8",
++                              "a8_tall_swiglu_r64_c128", "launch_q3_mma_tall_a8_swiglu_r64_c128",
++                              columns, w.n, w.k, stream);
+             launch_q3_mma_tall_a8_swiglu_r64_c128(act, w, out, stream);
+         } else if (columns <= q3_small_t::kTokens) {
++            q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A8",
++                              "a8_small_t_swiglu_r16_c8", "launch_q3_mma_small_t_a8_swiglu_r16_c8",
++                              columns, w.n, w.k, stream);
+             launch_q3_mma_small_t_a8_swiglu_r16_c8(act, w, out, stream);
+         } else {
++            q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A8",
++                              "a8_small_t_swiglu_r16_c16", "launch_q3_mma_small_t_a8_swiglu_r16_c16",
++                              columns, w.n, w.k, stream);
+             launch_q3_mma_small_t_a8_swiglu_r16_c16(act, w, out, stream);
+         }
+         return;
+@@ -102,8 +109,14 @@ void q3_linear_swiglu_dispatch(const Tensor& x, const Weight& w, Tensor& out,
+     if (columns >= 2 && columns <= q3_small_t::kMaxTokens && (w.k % 8) == 0 &&
+         (w.padded_shape[1] % q3_small_t::kGroupK) == 0) {
+         if (columns <= q3_small_t::kTokens) {
++            q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A16",
++                              "a16_small_t_swiglu_r16_c8", "launch_q3_mma_small_t_swiglu_r16_c8",
++                              columns, w.n, w.k, stream);
+             launch_q3_mma_small_t_swiglu_r16_c8(x, w, out, stream);
+         } else {
++            q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A16",
++                              "a16_small_t_swiglu_r16_c16", "launch_q3_mma_small_t_swiglu_r16_c16",
++                              columns, w.n, w.k, stream);
+             launch_q3_mma_small_t_swiglu_r16_c16(x, w, out, stream);
+         }
+         return;
+@@ -114,7 +125,9 @@ void q3_linear_swiglu_dispatch(const Tensor& x, const Weight& w, Tensor& out,
+         const dim3 grid(
+             static_cast<unsigned>((kOutputRows + q3_gemv_staged::kWarpsPerCta - 1) /
+                                    q3_gemv_staged::kWarpsPerCta),
+             1u, 1u);
++        q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A16", "a16_fused_gemv",
++                          "q3_gemv_staged_kernel<8,true,true>", columns, w.n, w.k, stream);
+         q3_gemv_staged::q3_gemv_staged_kernel<8, true, true,
+                                               q3_gemv_staged::kProductionGroupsPerStage,
+                                               q3_gemv_staged::kProductionPipelineStages, 3>
+@@ -127,5 +140,7 @@ void q3_linear_swiglu_dispatch(const Tensor& x, const Weight& w, Tensor& out,
+         return;
+     }
+     if (columns >= kTallColumns) {
++        q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A16", "a16_tall_swiglu_r64_c128",
++                          "launch_q3_mma_tall_swiglu_r64_c128", columns, w.n, w.k, stream);
+         launch_q3_mma_tall_swiglu_r64_c128(x, w, out, stream);
+         return;
+@@ -141,3 +156,6 @@ void q3_linear_swiglu_dispatch(const Tensor& x, const Weight& w, Tensor& out,
+         Tensor x_chunk(const_cast<std::uint8_t*>(x_offset), DType::BF16, {w.k, chunk});
+         Tensor proj_chunk(proj.data, DType::FP32, {2 * kOutputRows, chunk});
++        q3_dispatch_audit("q3_linear_swiglu_projection_dispatch", "A16",
++                          "a16_chunked_fp32_projection", "launch_q3_mma_r32_c64_f32", chunk, w.n, w.k,
++                          stream);
+         launch_q3_mma_r32_c64_f32(x_chunk, w, proj_chunk, stream);
+*** End Patch

@@ -1,0 +1,19 @@
+{
+  "format_version": 1,
+  "repository": "yalding/ninfer-4080",
+  "requested_revision": "2469b5752672ad597055af61fe28e8e7ced20056",
+  "url": "https://codeload.github.com/yalding/ninfer-4080/tar.gz/2469b5752672ad597055af61fe28e8e7ced20056",
+  "archive_bytes": 10604598,
+  "archive_sha256": "4dbdc09000e0358df70a4dbdd824edc1cb853fa48634a4877554d7f1841379ba",
+  "archive_local_path": ".cache/m0-reference/ninfer-4080.tar.gz",
+  "archive_file_mtime_utc": "2026-10-29T16:07:16.565476+00:00",
+  "extracted_source_root": ".cache/m0-reference/ninfer-4080-2469b5752672ad597055af61fe28e8e7ced20056",
+  "canonical_source_tree_sha256": "35b71e27437fa63c201fbdb387b6bc81199ea02f229cc22193bae9e05be1b804",
+  "canonical_source_tree_algorithm": "tools/m0_reference.py source_digest; sorted UTF-8 relative paths prefixed with eight-byte big-endian path length, followed by binary file SHA-256",
+  "acquisition": "HTTPS archive retrieved and extracted locally; upstream source not imported into the production runtime",
+  "limits": [
+    "Archive digest records this single acquisition, not an independently authenticated or signed commit.",
+    "The extracted directory contains no Git metadata; Git commands there resolve the enclosing Saga repository and cannot establish upstream identity.",
+    "Source acquisition and patch applicability are not a reference build, device link, model run, dispatch observation or benchmark."
+  ]
+}
