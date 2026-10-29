@@ -184,6 +184,9 @@ public:
     BringupGrant(BringupGrant&&) noexcept = default;
     BringupGrant& operator=(BringupGrant&&) noexcept = default;
 
+    // Returns immutable-by-copy project allocation metadata for a canonical ID or alias.
+    // Rejects unknown IDs, external terms, and moved/failed/reconciled grant state.
+    AllocationRecord allocation_contract(const std::string& id) const;
     // Reserve before invoking factory. It must never allocate more than the supplied cap and
     // must report real padded bytes, not payload bytes. Exceptions permanently fail this grant;
     // previous leases remain accounted until their last copy unwinds. Aliases share the same cap.

@@ -220,6 +220,12 @@ void sharing_tests() {
     check(StaticCandidate("not-shared", GraphMode::disabled, {text, unique, overhead()}).known_reserved_bytes()[2] == 576,
           "empty sharing identity deduplicated unrelated storage");
     auto grant = shared.grant(budgets());
+    const auto alias_contract = grant.allocation_contract("draft-embedding");
+    check(alias_contract.id == "embedding" && alias_contract.location == Location::device &&
+          alias_contract.alignment == text.alignment && alias_contract.source == AllocationSource::project,
+          "allocation contract lookup did not resolve alias metadata");
+    throws_with([&] { (void)grant.allocation_contract("missing"); }, "not granted");
+    throws_with([&] { (void)grant.allocation_contract("runtime"); }, "external overhead");
     auto alias_lease = allocate(grant, "draft-embedding", 256);
     bool called = false;
     throws_with([&] { grant.allocate("embedding", 1, [&](auto) { called = true; return storage(1); }); }, "cap exhausted");
@@ -397,6 +403,7 @@ void failure_tests() {
     }, "failed");
     check(aborted_owner->live == 0 && aborted_owner->releases == 1 && aborted.report().live_bytes == DomainBytes{},
           "post-factory rejection leaked backing or accounting");
+    throws_with([&] { (void)aborted.allocation_contract("weights"); }, "failed");
 
     auto external = plain_candidate().grant(budgets());
     auto external_leases = allocate_plain(external);

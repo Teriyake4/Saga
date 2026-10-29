@@ -224,6 +224,19 @@ BringupGrant::BringupGrant(const StaticCandidate& candidate, const Budgets& budg
 AllocationLease::AllocationLease(std::shared_ptr<detail::AllocationControl> control) : control_(std::move(control)) {}
 std::uint64_t AllocationLease::bytes() const noexcept { return control_ ? control_->bytes : 0; }
 
+AllocationRecord BringupGrant::allocation_contract(const std::string& id) const {
+    auto& state = require_state(state_);
+    std::lock_guard lock(state.mutex);
+    require_open(state);
+    const auto alias = std::find_if(state.candidate.aliases_.begin(), state.candidate.aliases_.end(),
+                                    [&](const auto& item) { return item.first == id; });
+    if (alias == state.candidate.aliases_.end()) throw std::invalid_argument("allocation not granted: " + id);
+    const auto& record = state.candidate.lines_[alias->second].allocation;
+    if (record.source != AllocationSource::project)
+        throw std::invalid_argument("external overhead has no project allocation contract: " + id);
+    return record;
+}
+
 AllocationLease BringupGrant::allocate(const std::string& id, std::uint64_t reservation,
                                      const std::function<MemoryBacking(std::uint64_t)>& factory) {
     const auto original = state_; // callbacks may move/replace the initiating grant
