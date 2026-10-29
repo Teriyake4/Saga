@@ -2,16 +2,11 @@
 
 A specialized C++20/CUDA inference engine under development. The first target is
 **original RTX 4080 16 GB + Qwen3.8-27B GSQ3**, with native Windows as the active
-build/qualification target. Linux remains a later platform workstream.
+build/qualification target. Linux host development/testing is available; Windows remains the production target.
 Architecture, complete scope and blocking acceptance requirements
 are in [PROPOSAL.md](PROPOSAL.md) and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-**Current increment: model/device-neutral host and runtime foundation.** There
-is no model loader, tokenizer execution, text inference, sampler, MTP or vision
-runtime yet. This is not a feature-complete or performance-qualified engine.
-The server never fabricates readiness, models, completions or token streams.
-See [docs/status.md](docs/status.md) for exact evidence and blockers, and
-[docs/HANDOFF.md](docs/HANDOFF.md) for the next agent's starting point.
+**Current implementation slice: host-testable M2 contracts, planning and startup composition.** M2.1–M2.7/.9 host slices and M2.8 profile policy are implemented; final macOS/Linux host matrices passed 25/25 CTest groups in all ten configurations after the final test-only early-notification regression. See [docs/m2-evidence.md](docs/m2-evidence.md) for configurations, repeat tests, logs and limitations. Real compiled SM89 algorithms/tuning, physical backend qualification, native Windows and original-4080 evidence remain outstanding. No model loader, tokenizer execution, text inference, sampler, MTP or vision runtime exists. This is not a feature-complete or performance-qualified engine. The server never fabricates readiness, models, completions or token streams. See [docs/status.md](docs/status.md), [docs/m2-evidence.md](docs/m2-evidence.md), [docs/m1-evidence.md](docs/m1-evidence.md), and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 ## Build and test without a GPU
 
@@ -19,7 +14,8 @@ Requirements: CMake >=3.28, a C++20 compiler, a host build tool, and Python >=3.
 when tests are enabled. Host dependency headers/licenses are vendored and hashed;
 configuration/builds do not access the network. CUDA is off by default.
 
-Native Windows with Visual Studio 2022 C++ build tools and its Windows SDK:
+Native Windows with Visual Studio 2022 C++ build tools and its Windows SDK, from
+an x64 Visual Studio developer PowerShell prompt:
 
 ```powershell
 cmake --preset windows-msvc-debug
@@ -27,27 +23,80 @@ cmake --build --preset windows-msvc-debug --parallel 4
 ctest --preset windows-msvc-debug
 ```
 
-Use `windows-msvc-release` for Release. Both are native x64 MSVC, with a consistent
-dynamic CRT; no WSL is involved. To build, test, install and retain evidence:
+Use `windows-msvc-release` for Release. These existing Visual Studio generator
+presets remain available and use native x64 MSVC with a consistent dynamic CRT;
+no WSL is involved. Native Windows Ninja host presets are also available from a
+Visual Studio x64 developer prompt with Ninja installed and on `PATH`:
+
+```powershell
+cmake --preset windows-ninja-debug
+cmake --build --preset windows-ninja-debug --parallel 4
+ctest --preset windows-ninja-debug
+
+cmake --preset windows-ninja-release
+cmake --build --preset windows-ninja-release --parallel 4
+ctest --preset windows-ninja-release
+```
+
+They explicitly select `cl.exe`; do not run them from a plain shell and treat a
+failed MSVC environment setup as a qualified build. These are host build/test
+paths, not Windows qualification evidence by themselves. To build, test, install and retain evidence:
 
 ```powershell
 .\tools\windows\verify.ps1 -Configuration Debug
 .\tools\windows\verify.ps1 -Configuration Release
 ```
 
-See [docs/windows-build.md](docs/windows-build.md). Windows Debug/Release and
-macOS development-regression jobs are configured in `.github/workflows/host.yml`;
-Linux jobs are deferred. Configuration is **not** evidence CI has run: only macOS
-arm64 host execution is verified here. For macOS host tests, use `host-debug`
-with the same configure/build/ctest sequence. This is not a Metal/CPU inference
-backend.
+See [docs/windows-build.md](docs/windows-build.md) for native Windows paths and
+[docs/linux-build.md](docs/linux-build.md) for Linux host development/testing.
+Windows Debug/Release, macOS development-regression, and Linux host jobs are
+configured in `.github/workflows/host.yml`; configuration is **not** evidence CI
+has run. macOS arm64 and the documented OrbStack Linux VM host runs have been
+verified locally. Neither is inference-backend or production qualification. For
+macOS host tests, use `host-debug` with the same configure/build/ctest sequence;
+this is not a Metal/CPU inference backend.
 
-Additional Unix host presets are `host-release` (checks remain enabled in NDEBUG),
-`host-sanitized` (ASan+UBSan), and `host-thread-sanitized` (ThreadSanitizer).
-Run thread sanitization separately from ASan/UBSan; CMake rejects combining them.
-`SAGA_BUILD_TESTS=OFF` omits Python/test targets.
+On macOS/Linux, `host-ninja-debug` and `host-ninja-release` provide explicit
+Ninja Debug/Release configure, build, and CTest paths; the existing Unix Makefiles
+presets remain available. For example:
+
+```sh
+cmake --preset host-ninja-debug
+cmake --build --preset host-ninja-debug --parallel 4
+ctest --preset host-ninja-debug
+
+cmake --preset host-ninja-release
+cmake --build --preset host-ninja-release --parallel 4
+ctest --preset host-ninja-release
+```
+
+Named product-only Release presets are `product-ninja-release` on macOS/Linux and
+`windows-product-ninja-release` on native Windows. They set
+`SAGA_BUILD_TESTS=OFF` and `SAGA_ENABLE_CUDA=OFF`, so product configuration does
+not discover Python or create test targets. For example, from the applicable
+host environment:
+
+```sh
+cmake --preset product-ninja-release
+cmake --build --preset product-ninja-release --parallel 4
+```
+
+```powershell
+cmake --preset windows-product-ninja-release
+cmake --build --preset windows-product-ninja-release --parallel 4
+```
+
+The Windows command requires the same x64 VS developer environment and installed
+Ninja as the Windows host presets. Product-only means building the server/product
+targets without tests or CUDA; it is not a qualification claim. Additional Unix
+presets are `host-release` (checks remain enabled in NDEBUG), `host-sanitized`
+(ASan+UBSan), and `host-thread-sanitized` (ThreadSanitizer). Run thread
+sanitization separately from ASan/UBSan; CMake rejects combining them.
 `SAGA_WARNINGS_AS_ERRORS=ON` is the default for Saga sources. Third-party headers
-are marked system includes. All host tests are finite and use no weights.
+are marked system includes. All host tests are finite and use no weights. A built
+server's `--check-config` validates static configuration only: it does not load or
+validate model artifacts, establish capability support, allocate resources, or
+report runtime readiness.
 
 ## Run the model-free server
 
@@ -159,13 +208,17 @@ see [docs/artifact-format.md](docs/artifact-format.md).
   ledger locks, and expired allocation-owner history is retired immediately.
 - Metadata/checked byte calculation for all eleven required KV formats and curated
   mixed pairs. No append/read/attention implementations or codec availability claim.
-- A minimal model/backend contract slice provides structural metadata/program checks
-  and owning static registries, exercised only with synthetic implementations. It
-  does not load GGUF, register a production model/backend, or implement inference.
+- Host-testable M2 contracts provide structural metadata/program checks, owning
+  registries, bounded resource/context planning, typed step contracts, profile-based
+  guarded kernel selection, and synthetic startup/grant/reconcile/approval composition.
+  See [docs/m2-evidence.md](docs/m2-evidence.md). This does not load GGUF, register a
+  production model/backend, compile SM89 inference algorithms, or implement inference.
 - A separately selected `saga_platform` target: `src/platform/shared/` for common
   checks, `src/platform/windows/` for native Windows mapping/process APIs, and
-  `src/platform/linux/` for deferred Linux selection reusing `src/platform/posix/`.
-  macOS uses the POSIX implementation only for development tests. Mapping covers
+  `src/platform/linux/` for Linux selection reusing `src/platform/posix/`.
+  Linux host development/testing is documented in
+  [docs/linux-build.md](docs/linux-build.md); macOS also uses the POSIX implementation
+  for development tests. Mapping covers
   Unicode native paths, empty/unaligned windows and checked >4-GiB file ranges;
   native process adapters own UTF-8 arguments, environment reads and shutdown
   notification. See [docs/platform.md](docs/platform.md).
@@ -179,10 +232,15 @@ see [docs/artifact-format.md](docs/artifact-format.md).
 - Offline dependency verification and explicit blocked reference/quality manifests.
 
 These runtime primitives are tested libraries, **not wired into HTTP generation**.
-Production model/backend sessions, automatic context search and liveness-based
-scratch reuse remain future work. No model/device-specific code was added in this
-increment. The current 18-group suite passes on macOS in Debug, Release, ASan/UBSan
-and TSan; native Windows/MSVC execution is still unverified.
+Production model/backend sessions and liveness-based scratch reuse remain future work.
+Finite static auto-context planning now exists in the host-testable M2 planner; it
+selects the highest statically eligible candidate and does not retry smaller contexts
+after subsequent preparation/warmup/capture/reconciliation failures. This runtime-
+history note predates the current M2 slice and added no generation integration.
+Historical M1 host validation and current M2 targeted/full-matrix evidence have distinct
+scopes: see [docs/m1-evidence.md](docs/m1-evidence.md) and
+[docs/m2-evidence.md](docs/m2-evidence.md). Native Windows/MSVC execution remains
+unverified.
 
 ## Real 4080 CUDA portability gate
 
@@ -199,8 +257,7 @@ RTX 4080 and a supported installed CUDA toolkit:
 
 The script uses `cuda-windows`, retains verbose compilation/device-link evidence
 and checks both the runtime exit code and JSON result. Initial build floor is
-CUDA >=12.8; the exact MSVC/toolkit/driver matrix is not yet qualified. Linux
-portability and reference reproduction remain deferred workstreams.
+CUDA >=12.8; the exact MSVC/toolkit/driver matrix is not yet qualified. Linux CUDA portability and reference reproduction remain deferred workstreams.
 See [docs/cuda-portability.md](docs/cuda-portability.md) for evidence requirements.
 **This CUDA translation unit has not been compiled, device-linked or run here.**
 The native Windows original-4080 run is the active portability gate. The original

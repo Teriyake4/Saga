@@ -4,9 +4,9 @@
 
 Current implementation and validation evidence: [docs/status.md](docs/status.md). Requirements below are not claims of completed capabilities.
 
-**Current user-directed sequence:** prioritize native Windows build/runtime work; defer Linux qualification until later. Keep the eventual cross-platform requirements, but do not block Windows development on absent Linux results or claim cross-platform completion. Each instance runs one model; an optional single-profile INI configures that model, not a multi-model router.
+**Current user-directed sequence:** native Windows remains the production target; Linux host development/testing is enabled, while Linux CUDA, model/runtime and production qualification remain outstanding. Keep cross-platform gates explicit and do not claim completion from host results alone. Each instance runs one model; an optional single-profile INI configures that model, not a multi-model router.
 
-Build a small C++20/CUDA engine with **independent model runtimes and GPU backends, plus optional model–GPU tuning profiles**. The first shipping target is **RTX 4080 16 GB + Qwen3.8-27B GSQ3, a GPU-resident text decoder, native MTP, adjustable context, selectable KV-cache quantization, and image input with optional CPU vision/projector execution**. Ship one server executable exposing an OpenAI-compatible Chat Completions API, targeting native Windows first and Linux later, initially with one active generation request. New models implement a small model-runtime class and declare their optional capabilities.
+Build a small C++20/CUDA engine with **independent model runtimes and GPU backends, plus optional model–GPU tuning profiles**. The first shipping target is **RTX 4080 16 GB + Qwen3.8-27B GSQ3, a GPU-resident text decoder, native MTP, adjustable context, selectable KV-cache quantization, and image input with optional CPU vision/projector execution**. Ship one server executable exposing an OpenAI-compatible Chat Completions API, targeting native Windows for production and Linux host development/testing, initially with one active generation request; Linux CUDA and production qualification remain outstanding. New models implement a small model-runtime class and declare their optional capabilities.
 
 The strongest starting point is the existing NInfer-4080 GSQ3 path. Use it as a reproducible reference and a source of concrete kernel ideas. Preserve your own module boundaries so adding a different model or a later GPU target does not require copying the entire engine. Matching NInfer or Strata is a measurement goal, not an architectural guarantee. [IMPLEMENTATION_PLAN.md, section 2](IMPLEMENTATION_PLAN.md#2-acceptance-profiles-and-performance-contract) is authoritative for acceptance: a feature-complete candidate is not a performance-qualified release until every frozen comparable case passes the 95% throughput / 110% uncached-TTFT gate.
 
@@ -47,7 +47,7 @@ The server-only scope, configurable context/KV, native MTP, CPU mmproj offload, 
 | Execution | Correct eager path, CUDA Graph decode, native MTP with an off switch | DFlash2 and other proposal backends |
 | Vision placement | Image encoder + multimodal projector on CPU or GPU; CPU mode keeps their weights/workspace off VRAM | Mixed encoder/projector placement and video |
 | Product | One long-running server executable; server TOML plus optional one-model INI and startup flags | Additional server APIs if justified; no multi-model router implied |
-| Platforms | Native Windows build/smoke qualification first; shared/native platform boundaries | Linux qualification deferred; WSL2 separately measured, never called native Windows |
+| Platforms | Native Windows production build/smoke qualification; Linux host development/testing enabled through shared/native platform boundaries | Linux CUDA/model/production qualification remains outstanding; WSL2 separately measured, never called native Windows |
 
 **v0 excludes** Blackwell implementation work, interactive generation CLI, desktop UI, video, general text-decoder weight offload, multi-GPU/distributed serving, hot model swapping, arbitrary model loading, and a generic graph compiler. Offline conversion, tests, and benchmark drivers are development tools, not additional user-facing inference products. A plain text path is an internal implementation milestone; the first feature-complete release includes MTP, image input/CPU mmproj placement, and selectable KV codecs.
 
@@ -380,8 +380,8 @@ src/frontend/        tokenizer integration and model-specific templates
 src/core/            ownership, buffers, logging, errors
 src/platform/shared/ common checks, UTF-8 validation and platform-neutral behavior
 src/platform/windows/ native Windows files, environment and console shutdown
-src/platform/linux/   deferred Linux selection using reusable POSIX implementations
-src/platform/posix/   reusable POSIX calls; macOS host regression, not production qualification
+src/platform/linux/   enabled Linux host selection using reusable POSIX implementations
+src/platform/posix/   reusable POSIX calls; Linux/macOS host support, not CUDA or production qualification
 src/runtime/         scheduler, admission, cancellation, plans
 src/artifact/        reader, manifest validation, binding
 src/models/qwen3_8_27b/       definition, bindings, frontend, state and native program
@@ -696,7 +696,7 @@ Speculation can commit several tokens per pass, so committed tokens/s can exceed
 
 GGUF is the required runtime input container. This is a container policy, not support for arbitrary GGUF models, arbitrary tensor encodings, a generic ggml execution engine, or a promise that Saga artifacts are consumable by every llama.cpp build. The first profile is finite and model-specific: the exact supported architecture/geometry, components, tensor mappings, numerical encodings, and backend bindings must be explicitly identified. Unknown architectures, required tensor types, encodings, or unsupported mappings fail before readiness.
 
-The initial target is Qwen3.8-27B GSQ3 body weights plus Q4 embedding/head weights. GSQ3 is not GGUF `Q3_K`, `Q3_K_M`, or `IQ3`; tensor names or a GGUF quantization label do not establish equivalent represented values. The exact GSQ/Q4 mapping and profile are unresolved M0/M3 gates. A profile may use namespaced metadata and verified standard typed code/scale tensors if those can represent the exact payload. Validate the mapping against a pinned GGUF specification and actual reader behavior before freezing it. Do not invent GGUF tensor-type IDs, mislabel payloads as common ggml quantizations, or claim universal interoperability. The unpinned specification link and review boundary are recorded in [docs/artifact-format.md](docs/artifact-format.md).
+The initial target is Qwen3.8-27B GSQ3 body weights plus Q4 embedding/head weights. GSQ3 is not GGUF `Q3_K`, `Q3_K_M`, or `IQ3`; tensor names or a GGUF quantization label do not establish equivalent represented values. The exact GSQ/Q4 mapping and profile are unresolved M0/M3 gates. A profile may use namespaced metadata and verified standard typed code/scale tensors if those can represent the exact payload. Validate the mapping against a pinned GGUF specification and actual reader behavior before freezing it. Do not invent GGUF tensor-type IDs, mislabel payloads as common ggml quantizations, or claim universal interoperability. The pinned specification/selected reader-source references and their review boundary are recorded in [docs/artifact-format.md](docs/artifact-format.md); source hashes do not establish a compiled reader or the GSQ profile.
 
 Compatible MTP and vision/projector components are also GGUF runtime inputs under the same validated profile, with checksums and explicit logical/shared-tensor bindings. Whether these components reside in the main file or checksummed companion GGUF files—and the exact file count/layout—remains unresolved. Missing required components fail when the corresponding capability is requested. Safetensors and reference checkpoint formats are offline conversion inputs only, not runtime formats. Tokenizer/template/configuration data and checksum/manifest sidecars may accompany the GGUF inputs; sidecars contain no executable artifacts.
 
@@ -714,7 +714,7 @@ Keep logical weight roles separate from physical parents so fused gate/up storag
 
 Conversion and loading pipeline:
 
-1. Pin the GGUF specification/revision and actual implementation references before implementation; pin source checkpoint/config metadata and reject unknown geometry or encoding.
+1. Use the locked GGUF specification/selected source revision, pin any additional implementation references, and verify the actual profile before implementation; pin source checkpoint/config metadata and reject unknown geometry or encoding.
 2. Convert supported reference source files offline into the explicit GGUF profile; never treat safetensors/reference formats as runtime alternatives.
 3. Decode small independent fixtures with a scalar reference; verify code interpretation, scale bits/rounding, group axis, padding, tensor names, dimensions, and ordering.
 4. Validate GGUF format magic/version (never trust the `.gguf` suffix), metadata, standard tensor types, required tensors/components, checksums, bounds, offset arithmetic, lengths, versions, alignment requirements, and profile/kernel bindings. Reject unknown required tensor types and unsupported mappings.
@@ -927,11 +927,11 @@ Bind localhost by default. If remote binding is enabled, support bearer authenti
 
 ## 11. Linux and Windows
 
-Native Windows is the active implementation and build target; Linux qualification is deferred by the current user-directed sequence. A `.bat` launcher or a Linux container running through WSL does not establish native Windows compatibility. `saga_platform` selects shared code plus one native backend, with `platform/shared`, `platform/windows` and a deferred `platform/linux` boundary. Reusable POSIX implementations avoid duplicating Linux/macOS system-call bodies. Existing both-OS gates below describe eventual cross-platform completion, not a requirement to work on Linux in the current Windows increment.
+Native Windows remains the active production target; Linux host development/testing on OrbStack is authorized. The recorded host matrix is Ubuntu 25.04 aarch64, not native Windows, x86_64 Linux, Linux CUDA, or model/performance qualification; see `docs/m1-evidence.md` and `docs/linux-build.md`. A `.bat` launcher or a Linux container running through WSL does not establish native Windows compatibility. `saga_platform` selects shared code plus one native backend, with `platform/shared`, `platform/windows` and `platform/linux` boundaries. Reusable POSIX implementations avoid duplicating Linux/macOS system-call bodies. Existing both-OS gates describe eventual cross-platform completion.
 
 - Use CMake presets and Ninja with a CUDA-supported host compiler. Pin a tested Linux and MSVC/CUDA/toolchain matrix; selecting a version is an implementation gate, not a claim of current validation.
 - Compile the CUDA backend and enabled Qwen specializations for SM89 on the RTX 4080. Model headers use backend-neutral handles/contracts. Do not add Blackwell targets in this scope.
-- In M1, compile **and run** a small real-4080 portability probe on Linux and native Windows: asynchronous copy/staging, BF16 MMA, the intended device-link setup and, if used, cooperative launch/occupancy queries with a safe fallback. Record compiler flags and output checks before adopting these mechanisms in M4. Host-only CI or a model-free HTTP build is not kernel/toolchain qualification.
+- M1 requires compiling **and running** a small real-4080 portability probe on Linux and native Windows: asynchronous copy/staging, BF16 MMA, intended device-link setup and, if used, cooperative launch/occupancy queries with a safe fallback. This remains blocked on both operating systems. Host-only CI or a model-free HTTP build is not kernel/toolchain qualification.
 - Put POSIX `mmap`/`pread` and Windows file mapping/overlapped reads behind an RAII interface. Serialized fields use explicit widths, endianness, alignment, and versioning—not native struct dumps.
 - Keep `io_uring` and `hwloc` optional. Image decoding and the CPU vision math backend are required for image-enabled builds; isolate them so a text-only server profile can omit loading their resources. Pin a portable CPU backend and qualify its dtype conversion/accumulation on both OSes.
 - Pin C++ dependency and MSVC CRT choices consistently; test shutdown, cancellation, Unicode paths, and models larger than 4 GiB on both OSes.

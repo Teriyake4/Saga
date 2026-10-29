@@ -1,25 +1,35 @@
 # Saga implementation status
 
-Snapshot: **28 October 2026**. The user approved starting implementation; this is
-the M0/M1/M2 foundation plus hardening, single-model configuration, modular
-platform work and neutral runtime primitives, not completion of those milestones.
-The continuation entry point is [HANDOFF.md](HANDOFF.md). Native Windows is now the
-active build/qualification target; Linux work is deferred at the user's request.
-The full feature scope and 95% throughput / 110% uncached-TTFT thresholds remain
-unchanged, and no Windows-only result implies eventual cross-platform completion.
+Snapshot: **28 October 2026**. User authorization now includes finishing the
+host-testable M2 implementation; this supersedes earlier no-M2 boundaries preserved
+in historical notes. M2 planner/model-step/profile/startup slices are implemented
+and dual reviewed. Final macOS/Linux host matrices passed 25/25 in ten configurations
+after the final test-only early-notification regression; details and logs are in
+[m2-evidence.md](m2-evidence.md). Native Windows and physical original-
+4080 gates remain pending. M0/M1/M2 full exit gates remain blocked. The full feature
+scope and 95% throughput / 110% uncached-TTFT thresholds are unchanged; host results
+do not qualify CUDA, Windows, model quality, fit, or performance. See [HANDOFF.md](HANDOFF.md).
 
 ## M0 / M1 / M2 milestone gates
 
 | Milestone | Status | Implemented evidence | Outstanding exit-gate work |
 |---|---|---|---|
-| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned reference-source and model-metadata retrieval, hashes/licenses where available, reference/quality manifests and policy scaffolding | Actual original-4080 environment, reference build/run and observed precision dispatch, verified component/weight/tokenizer bytes, frozen matched suite, independent fixtures and approved quality budgets; Switchyard reuse remains license-blocked |
-| **M1 - foundation and server shell** | **Partial; host shell implemented** | Model-free server, configuration/security hardening, platform adapters, host build/install scripts and presets; macOS host validation | Native Windows/MSVC Debug/Release and installed-package evidence; real original-4080 CUDA compile/device-link/run (probe source exists only); full platform/device ownership and qualification gates. Linux qualification remains deferred |
-| **M2 - contracts and resource planning** | **Partial; neutral groundwork implemented** | Kernel contracts/selection, allocation ledger and candidate/grant/reconcile/approval types, runtime primitives, minimal model/backend/session contracts and static registries, synthetic composition tests | Complete metadata-driven component calculator, explicit/auto context planning, integrated startup/readiness and failure orchestration, concrete model/state/frontend and generation-step contracts, production sessions/physical fences, and remaining integration qualification/tuning |
+| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned reference/model metadata and GGUF specification/selected source content, license/hash evidence, source/local-artifact audit tooling, partial independent encoding/projection fixtures and policy scaffolding | Actual original-4080 environment, reference build/run and observed dispatch, verified component/weight/tokenizer bytes, exact GGUF profile, per-operator adoption decisions, frozen matched suite, complete layer/state fixtures and approved quality baselines/budgets; Switchyard reuse remains license-blocked |
+| **M1 - foundation and server shell** | **Implemented slices; exit remains blocked/unqualified** | Host Ninja/product presets; Linux presets/runner; optional bounded PNG/JPEG RGB adapter (default OFF); strict config precedence; process lifecycle/signal coverage; internal CUDA resource-owner/probe contracts; bounded evidence tooling | Native Windows/MSVC Debug/Release and real original-4080 CUDA compile/device-link/run on both Linux and Windows remain outstanding; no M1 exit qualification. OrbStack ARM64 host evidence does not qualify x86_64 Linux or CUDA |
+| **M2 - contracts and resource planning** | **Host-testable implementation M2.1-.7/.9 implemented; M2.8 policy implemented; full gate blocked** | Structural model/backend contracts and registries; metadata-driven allocation/context planner; step/request/result contracts; device/pair profiles and startup kernel binding; synchronous startup/grant/warm/capture/reconcile/approval composition. See [m2-evidence.md](m2-evidence.md) for source/test paths and targeted evidence | Typed bounded model-step requests/results and startup orchestration are implemented; production model/backend registrations, HTTP generation integration, compiled SM89 algorithm implementations and measured tuning, physical backend fences/device allocations, actual model inventory/fit, native Windows/MSVC, original-4080 hardware and full qualification remain outstanding |
 
-The latest implementation slice passed **18/18 host test groups** on macOS in
-Debug, Release, ASan/UBSan and TSan, plus 20 repeated TSan `model_contracts` runs.
-These results do not close Windows, CUDA, model-quality, fit or performance gates.
-No milestone percentage or full M0/M1/M2 completion is claimed.
+Final M2 host validation passed 25/25 CTest groups in all ten configurations after
+rebuilding with the final test-only early-notification regression: macOS Debug,
+Release, ASan+UBSan and TSan; Linux GCC Debug/Release; Linux Clang Debug/Release,
+ASan+UBSan and TSan. Image decoding was ON and CUDA OFF. Four focused tests (`startup`,
+`step`, `model_contracts`, `runtime_integration`) each passed 20 repeat runs on macOS
+and Linux TSan (80 executions per OS). Product-only Release build/install and installed
+TOML+INI config checks passed on both earlier, with production source unchanged.
+No command timed out. The Linux verifier's descendant-cleanup timeout issue remains
+unfixed; final Linux tests used direct bounded preset commands and per-configuration
+CTest logs, not a new verifier snapshot/provenance claim. See [m2-evidence.md](m2-evidence.md).
+These results do not close native Windows, physical CUDA, model-quality, fit or
+performance gates. M1 exit remains blocked.
 
 ## Runtime model format decision (planned)
 
@@ -27,7 +37,8 @@ No milestone percentage or full M0/M1/M2 completion is claimed.
 `.ninfer` model file. This is a documentation requirement, not implemented loader
 support. The initial architecture/weight encodings remain narrowly scoped; GSQ3
 is not interchangeable with GGUF Q3_K/IQ3 recipes. The exact verified GSQ/Q4 GGUF
-profile and source/specification pins remain M0/M3 work. See
+profile remains M0/M3 work. The specification/selected reader sources are now
+content-verified at a pinned revision; this is not a compiled/implemented reader. See
 [artifact-format.md](artifact-format.md).
 
 GGUF does not dictate the GPU execution layout: bounded one-time or cached native
@@ -40,28 +51,51 @@ GGUF-model support or new model/device implementation is supplied by this decisi
 
 | Area | Present implementation | Evidence/limits |
 |---|---|---|
-| Build | C++20 CMake targets, separate native-MSVC Debug/Release presets with dynamic CRT, optional Windows CUDA probe, install/evidence scripts | Windows-priority CI plus macOS host regression configured; only macOS executed here, Linux jobs deferred |
+| Build | C++20 CMake targets, host Ninja/product presets, separate native-MSVC Debug/Release presets, Linux presets and bounded evidence runner | macOS and Ubuntu 25.04 aarch64 OrbStack host/product checks passed; Ubuntu 24.04 x86_64 CI configured but not run; Windows remains unvalidated natively. See [linux-build.md](linux-build.md) |
 | Server shell | Strict TOML + optional one-model INI + CLI merge, structured errors/logs, liveness, unavailable readiness/generation, empty model list and truthful metrics | Real-process HTTP/config tests; no model catalog/router or M5/M6 correct text API claim |
 | Bounds/security | Fixed HTTP workers/pending connection bound, header-count/body limits, strict framing/chunk/trailer parsing, I/O idle timeouts, localhost default, environment bearer auth | Raw-socket/idle/disconnect/restart tests; one request per connection; no TLS or absolute trickle-client deadline; trusted reverse proxy required for remote exposure |
 | Kernel contracts | Startup descriptor/support/prepare, well-formedness/compatibility-before-ranking, optional profile preferences, nonvirtual prepared launchers and actual workspace checks | Synthetic specialization guard/fallback/lifetime tests, invalid enum/GSQ3-group tests and zero-workspace alignment tests; no real CUDA inference implementation |
 | Resource planning | Checked per-domain ledger, sharing identities, exclusive backing ownership, synchronized lease-release accounting, separate candidate/grant/reconcile/approval types and overhead caps | Fake allocation/measurement tests, including reentrant transactions, verified owner coverage, concurrent releases and failed bring-up; not actual driver measurements or model fit |
 | KV metadata | Eleven canonical formats, alias normalization, exact block sizes and checked main-cache page/layout sizing | All proposal main-cache byte fixtures; no quantizer/attention/verification execution support |
-| Platform | Separate `saga_platform` target selects shared + native Windows or reusable POSIX sources; mapping, Unicode argv/environment and RAII shutdown adapters | macOS tests include >4-GiB windows, Unicode/environment bounds and prior signal restoration; Windows runtime unverified, Linux qualification deferred |
+| Platform | Separate `saga_platform` target selects shared + native Windows or reusable POSIX sources; mapping, Unicode argv/environment and RAII shutdown adapters | macOS tests include >4-GiB windows, Unicode/environment bounds and prior signal restoration; OrbStack ARM64 host tests pass, but Windows runtime, Linux x86_64 and Linux CUDA remain unqualified |
 | Runtime primitives | Resource-retaining completions; bounded execution worker/reserved cleanup; generation-tagged sequence retirement; bounded single-active admission and committed-byte output | Unit and cross-component tests; owner-thread contracts enforced where specified; no HTTP generation integration or device synchronization |
-| Model/backend contracts | Structural artifact/model/program validation, distinct component/tensor identities, exact tied-weight aliases, neutral session/runtime interfaces and independent owning static registries | Synthetic grant-backed composition and lifetime tests; no production registrations, typed generation-step results, startup orchestration or readiness integration |
-| CUDA probe | Real `cp.async` and BF16 WMMA result checks, original-4080 identity, SM89 image/occupancy queries and JSON evidence | Source only; **not compiled, device-linked or run** |
-| Source locks | Five pinned reference commits, selected implementation/build/license hashes, original/GSQ model metadata and actual failed probes | Partial source verification; no reference binary, weights or matched benchmark |
+| Model/backend contracts | Structural artifact/model/program validation, distinct component/tensor identities, exact tied-weight aliases, independent owning registries, typed bounded model-step requests/results and host startup orchestration | Synthetic grant-backed composition, failure and lifetime tests; no production model/backend registrations or HTTP readiness/generation integration |
+| CUDA probes/resource ownership | Real `cp.async`/BF16 WMMA portability probe plus internal smoke-only stream/event ownership probe | Host fake-runtime checks only; neither CUDA translation unit was device-compiled, linked or run |
+| Source locks | Five original reference pins plus the GGUF specification/selected ggml reader-source pin, actual source/build/license hashes and original/GSQ metadata | 114 inputs, 105 recorded-verified; new optional commit API 403 remains unverified; no reference binary, verified weights or matched benchmark |
 
-The M2 layer is intentionally incomplete: neutral model/backend registry and
-session interfaces exist, but production registrations/session implementations,
-complete model/state/frontend schemas, automatic context search and liveness-based
-scratch optimization are not present. Completion, logical deferred retirement and reserved worker cleanup now
-exist as neutral primitives; a future backend must supply physical-work fences.
-Memory accounting conservatively sums unique peaks. Real backends must allocate
-through the granted contract, supply truthful measurements and retain leases;
-the host calculator does not intercept driver allocations or prove fit itself.
+The M2 host contract/planning/startup slice is implemented, but remains synthetic
+and is not an inference backend. Production registrations/sessions and real model
+inventory are absent. The planner evaluates explicit or finite auto-context candidates
+from supplied metadata; auto candidates are bounded and descending, and duplicate
+entries are rejected rather than silently deduplicated. It picks the highest statically
+eligible candidate only: a later statically eligible kernel, preparation, warmup,
+capture, or reconciliation failure does not trigger lower-context retry. Unknown
+enabled allocations remain explicitly unresolved, never fabricated.
+Runtime cancellation/abandonment/failure is not a physical fence. A backend must
+implement `drain()` as a physical barrier on every failure/throw path; a backend
+factory that throws after submitting work retains responsibility to drain it.
+Memory accounting conservatively sums unique peaks; it is not driver interception or
+proof of real model fit. Plan identity is canonical length-prefixed serialization,
+not cryptographic attestation. Shared alias caps are shared accounting constraints,
+not allocation memoization. Full caveats and exact tests are in [m2-evidence.md](m2-evidence.md).
 
-## Current neutral model-contract increment
+## Preserved M0 evidence continuation (historical context)
+
+The earlier user authorization covered M0 work with GPT6 Luna implementers and parallel independent
+reviewers; it is historical, not the current boundary. Three reviewed host-side slices add GGUF source provenance, fail-closed
+source/local artifact byte auditing, and small independent storage/projection
+fixtures. Original source/evidence history is preserved; the optional new commit
+API rate limit is recorded, not hidden. No weights or upstream executables were
+run/downloaded, and no numerical quality or hardware result was invented.
+
+The complete M0 gates remain open. The independent scalar fixture does not fill
+the complete model/layer/state inventory, and checksum matching does not establish
+component compatibility. Hardware/reference execution, verified model inputs,
+actual GGUF mapping, operator-adoption decisions and reviewed quality/suite freezes
+remain outstanding. See [m0-evidence.md](m0-evidence.md) for exact progress and
+commands. The M0 audit intentionally returns exit 1 (blocked).
+
+## Prior neutral model-contract increment
 
 - Added `include/saga/runtime/model_contracts.h`, its implementation and the
   `model_contracts` test group as one bounded M2.1/M2.2 slice. Existing model types
@@ -86,8 +120,9 @@ the host calculator does not intercept driver allocations or prove fit itself.
 - Final macOS arm64 builds and **18/18 CTest groups passed** in Debug, Release,
   ASan/UBSan and TSan; `model_contracts` also passed 20 repeated TSan runs.
   Prior installation evidence below was not rerun for this slice.
-- Stop after this one step pending user approval. No planner, startup orchestrator,
-  controller, HTTP generation, model inspection, kernels or GPU tests were added.
+- This was a separately approved one-step increment; subsequent M0 evidence work
+  is recorded above. No planner, startup orchestrator, controller, HTTP generation,
+  model inspection, kernels or GPU tests were added by the contract step.
 
 ## Prior model/device-neutral runtime increment
 
@@ -233,8 +268,10 @@ local environment workarounds, not production Linux/Windows toolchain pins.
 ## Reference findings affecting the next increments
 
 See [source-lock.md](source-lock.md) for URLs, revisions, hashes and license texts.
-The retrieval snapshot contains **104 inputs, 96 HTTP-200 body hashes and eight
-HTTP-404 probes**; all five pinned commit responses matched the requested SHA.
+The initial retrieval snapshot contained **104 inputs, 96 HTTP-200 body hashes and
+eight HTTP-404 probes**; all five original pinned commit responses matched the SHA.
+The later GGUF append brings the inventory to 114 inputs/105 recorded-verified,
+with its optional pinned commit API still an unverified 403.
 Transient GitHub API 403 rate-limit responses remain in retrieval history. The
 final online audit reverified 96 hashes; the eight probe paths remained 404.
 
@@ -252,33 +289,42 @@ final online audit reverified 96 hashes; the eight probe paths remained 404.
 - Pinned host HTTP/JSON/TOML headers and licenses are independently verified in
   `third_party/lock.json`; no inference-engine source has been copied yet.
 
+## M1.1–M1.6 evidence and current boundary
+
+M1 source slices are implemented. Its full exit remains unqualified pending native
+Windows/MSVC and physical original-RTX-4080 CUDA evidence on both operating systems.
+M2 host-testable implementation is now authorized and is tracked in
+[m2-evidence.md](m2-evidence.md); this does not authorize M3+ inference integration.
+See [m1-evidence.md](m1-evidence.md) and [linux-build.md](linux-build.md) for M1
+evidence and workflow. Host results do not qualify native Windows, x86_64 Linux,
+CUDA, model support, or performance.
+
 ## Blocking gates and next work
 
-1. **M0.1 / M1.6:** obtain physical original-4080 native Windows/MSVC
-   build/device-link/run evidence and exact hardware/toolchain/environment data
-   first. Linux has its own deferred qualification gate; no Windows result can
-   stand in for it.
+1. **M0.1 / M1.6:** obtain physical original-4080 CUDA build/device-link/run
+   evidence and exact hardware/toolchain/environment data on native Windows and
+   Linux. OrbStack ARM64 host evidence is not a CUDA run; neither OS's result can
+   stand in for the other.
 2. **M0.2 / M0.5:** build and run the pinned 4080 reference; record actual phase/site
    precision, rounding, sampling/head/KV/graph settings and any A16 patch hash.
    Freeze mandatory matched cases/OS scope before tuning; no current suite is
    frozen and an empty suite is not a pass.
 3. **M0.3 / M3:** verify actual original/GSQ/MTP/vision/tokenizer inventories,
    checksums, packing/scale contracts, shared bindings and component compatibility.
-   Pin GGUF specification/reader inputs and verify an exact GSQ/Q4 GGUF mapping;
+   Use the pinned GGUF specification/selected reader sources, pin any further
+   implementation inputs and verify an exact GSQ/Q4 GGUF mapping;
    the format decision is not encoding interoperability or byte-level verification.
    Retrieved metadata/publisher claims do not satisfy byte-level verification.
 4. **M0.6–M0.7:** produce independent encoding/layer/state fixtures and original-BF16
    baseline evidence; review dataset splits, metrics, budgets, confidence and
    sample sizes before affected conversion/optimization. Null budgets stay blocked.
-5. **M2:** build bounded context planning and metadata-driven startup orchestration
-   on the neutral contracts/registries and ownership primitives. Complete concrete
-   model/state/frontend and generation-step contracts only from verified inputs.
-   Keep synthetic fixtures test-only. Proceed to M3's narrow GGUF converter/reader
-   and exact frontend only after the model/device work boundary is
-   approved and source inputs are sufficiently verified. No silent fake backend or
-   arbitrary-model importer.
+5. **M2 remaining:** use [m2-evidence.md](m2-evidence.md) for the exact host slice
+   status. Do not infer production readiness from synthetic tests. Keep production
+   registrations absent and proceed to M3 only with a separately authorized scope
+   and sufficiently verified source inputs. No silent fake backend or arbitrary-model
+   importer.
 
-M0/M1/M2 remain **partial**. No optimized plain-text checkpoint, full-feature
+M0/M1/M2 remain **partial at their full gates**. No optimized plain-text checkpoint, full-feature
 candidate or performance-qualified release is claimed. All eleven cache formats,
 native MTP and both vision placements remain full-release requirements. Missing
 measurements, quality policy and profile support cannot be waived for speed.

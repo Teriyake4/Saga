@@ -57,10 +57,15 @@ production model/backend registrations or session implementations. Host-only tes
 do not qualify Windows/CUDA. See `docs/HANDOFF.md` for validation and the next
 integration boundaries.
 
-## Neutral model/backend contract slice
+## Initial neutral model/backend contract slice (historical snapshot)
 
-`include/saga/runtime/model_contracts.h` adds a minimal M2.1/M2.2 boundary, not a
-complete model schema or generation runtime:
+This section records the first M2.1/M2.2 contract boundary as it existed before
+the later host-testable planner/startup/profile/step extensions. It is not the current
+API inventory; the current step and startup contracts are summarized below and under
+“M2 planner, profile, startup and model-step extensions.”
+
+`include/saga/runtime/model_contracts.h` adds the initial structural M2.1/M2.2
+boundary, not a complete production model schema or inference runtime:
 
 - `ArtifactMetadata` owns declared component identities and sizes. Existing
   `backend::LogicalWeightBinding::component_identity` selects the source component;
@@ -79,20 +84,61 @@ complete model schema or generation runtime:
   and duplicate registrations and unknown selection; selected shared owners survive
   registry destruction. Backend selections are mutable so session instantiation is
   callable. No production model/backend or silent fallback is registered.
-- `IModelDefinition` describes a model and creates an `IModelRuntime` whose current
-  contract covers sequence creation/release, not prefill/decode or typed text results.
-  `IGpuBackend::instantiate()` consumes the startup description and granted resources;
-  `IExecutionSession::execute()` runs only its prebound immutable program. Needed
-  borrowed factory inputs must be copied before return; no per-call program lookup
-  or generic model-program interpretation is established.
+- `IModelDefinition` describes a model and creates an `IModelRuntime` with sequence
+  creation/release plus typed prefill/decode/verify step contracts and bounded owning
+  results (`PendingStep` / `StepSource`). The step API validates request/result shape;
+  it does not implement model math, tokenization, sampling or generation. `IGpuBackend`
+  construction is composed by the M2 `StartupCoordinator`; the returned session is
+  startup-bound to prepared programs. Do not describe `IExecutionSession::execute()`
+  as the current API: that wording belongs to the earlier neutral-contract snapshot
+  and is superseded by the model-step/startup extensions described below. Borrowed
+  factory inputs needed later must be copied before return; no generic model-program
+  interpretation or production registration is established.
 - A bring-up grant permits bounded preparation, not serving. Session execution and
   sequence release obey the existing physical-fence and resource-retention contracts.
   Operations/destruction must be serialized, physical work drained, and runtime
   destroyed before its borrowed session. Completion consumers may outlive both if
   the implementation retains every needed backing owner in the completion.
 
-`tests/model_contracts_test.cpp` supplies only synthetic implementations. It checks
-metadata rejection/alias boundaries, registry ownership, grant-backed instantiation,
+`tests/model_contracts_test.cpp` covers synthetic metadata validation, alias boundaries
+and registry behavior. `tests/startup_test.cpp` covers grant-backed construction,
 constructor-failure unwinding and retained storage through the last copied completion.
-It does not implement context planning, inspect-to-approval orchestration, a controller,
-HTTP/SSE integration, real model math or device synchronization.
+`tests/step_test.cpp` covers the typed step boundary; `tests/startup_test.cpp` also
+covers its startup composition. The host-testable M2 planner/profile/startup slices are
+cataloged with source/test paths and evidence scope in `docs/m2-evidence.md`; they do
+not provide HTTP/SSE integration, real model math, production registrations or device
+synchronization.
+
+## M2 planner, profile, startup and model-step extensions
+
+`include/saga/memory/planner.h` / `src/memory/planner.cpp` implement metadata-driven
+resource evaluation and finite context selection. Explicit infeasibility fails;
+auto-context candidates are bounded and descending; duplicate candidate entries are
+rejected rather than silently deduplicated. The planner selects the highest statically
+eligible candidate. Selection is not a runtime fallback policy: kernel,
+preparation, warmup, capture or reconciliation failure propagates rather than retrying
+a smaller context. Unknown enabled allocations remain unresolved and cannot be replaced
+by fabricated sizes or generic overhead bounds.
+
+`include/saga/backend/device_profile.h` / `src/backend/device_profile.cpp` provide
+observed-facts-based device profiles, optional pair preferences, guarded kernel ranking
+and startup-bound prepared programs. Preferences never bypass support/numeric/resource
+guards. `make_rtx4080_profile()` expresses a named constraint set, not hardware
+attestation or qualification. Real compiled SM89 algorithms, variants and measured
+tuning remain outstanding.
+
+`include/saga/runtime/startup.h` / `src/runtime/startup.cpp` compose model/backend
+contracts with planning, bounded grant, instantiation, warmup/optional capture,
+reconciliation and approval. `ExecutionPlan::identity()` is canonical length-prefixed
+serialization, not a cryptographic digest. Shared alias caps are accounting constraints,
+not factory memoization. The synchronous coordinator/returned owner are externally
+serialized. Backend factories that throw after submitting work must retain and drain
+that work; backend `drain()` must be a blocking physical barrier on every failure path.
+A failed, cancelled, timed-out or abandoned completion is not such a barrier.
+
+`include/saga/runtime/model_contracts.h` and `tests/step_test.cpp` also define finite
+frontend/request validation and bounded typed owning model-step results. They do not
+execute tokenization or model operators. The final M2 host matrices pass 25/25 in all
+ten configurations; see `docs/m2-evidence.md` for exact evidence and remaining
+physical/production gates. The initial neutral-contract validation recorded earlier
+in this document remains historical and is not substituted for the final matrix.
