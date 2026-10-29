@@ -1,16 +1,8 @@
 # Saga continuation handoff
 
-> **Windows follow-up, 29 October 2026:** native Windows Ninja/MSVC Debug and
-> Release passed 26/26 CTest groups each; product install/config checks and all 19
-> physical original-4080 CUDA smoke checks passed. Windows-specific fixes and
-> retained evidence are in `docs/windows-4080-evidence.md`. The Windows-pending
-> statements and Windows next action below describe the historical 28 October
-> handoff, not the latest result. Linux physical-CUDA and M0 model/reference/
-> quality gates remain open. No M3+ implementation was added.
+> **Current handoff, 29 October 2026:** M0/M1/M2 code work and easy-new-model scaffolding are authorized. Working-tree additions include M0 artifact/frontend/reference capture and partial fixtures, CUDA BF16 baseline/SM89 WMMA plus a ledger-backed Executor, a CUDA test driver, and the new-model generator. Current macOS/Linux host validation passed 25/25 CTest groups in ten configurations, including sanitizers, and the Linux evidence runner passed install/config/scoped-source stability checks. The 29 October Windows report records 26/26 Debug and Release groups and 19/19 physical original-4080 smoke checks; raw bundle unavailable locally and no rerun against this tree. Linux ARM64 Clang 20/CUDA 12.8 compilation reached device-only SM89 plus host objects only—no device link/run. Full gates remain open. See [implementation snapshot](implementation-2026-10-29.md).
 
-Historical handoff: **28 October 2026**. Start with `docs/status.md`, this file, and
-`docs/m2-evidence.md`; consult `IMPLEMENTATION_PLAN.md` and `PROPOSAL.md` for
-requirements and complete release scope.
+Historical handoff: **28 October 2026**. Historical counts and old scope notes below are preserved, not current validation or authorization. Start with `docs/status.md`, this file, and milestone evidence; consult `IMPLEMENTATION_PLAN.md` and `PROPOSAL.md` for requirements.
 
 ## Current scope and state
 
@@ -85,14 +77,11 @@ not rewritten as current validation.
 
 Previous dirty and untracked user work is intentional/provenance-bearing. Preserve
 it. Do not reset, amend, delete generated evidence, commit or create branches unless
-asked. The Linux verifier's known timeout descendant-cleanup issue remains unresolved;
-final Linux test results and retained-log scope are recorded in `docs/m2-evidence.md`.
+asked. The historical Linux timeout descendant-cleanup issue is fixed with process-group termination and regression coverage. Fresh host matrix and Linux verifier results, preserved earlier failures, and retained-log scope are recorded in `docs/implementation-2026-10-29.md`.
 
-## Next actions
+## Next actions (current)
 
-1. On native Windows, obtain evidence from a PowerShell 7.4+ x64 VS2022 developer
-   shell (enable the optional image decoder for both host configurations), then run
-   the physical original RTX 4080 smoke on Device 0:
+1. Retest current tree on native Windows with a PowerShell 7.4+ x64 VS2022 developer shell and physical original RTX 4080 Device 0. The previous report is historical evidence, not a rerun:
 
    ```powershell
    pwsh -NoProfile -File .\tools\windows\verify.ps1 -Configuration Debug -EnableImageDecoder
@@ -100,17 +89,9 @@ final Linux test results and retained-log scope are recorded in `docs/m2-evidenc
    pwsh -NoProfile -File .\tools\windows\cuda-smoke.ps1 -Device 0
    ```
 
-   Retain/inspect reports. These Windows and original-4080 gates remain pending;
-   host synthetic kernels do not satisfy them. Linux host results do not qualify
-   Linux x86_64/CUDA or native Windows.
-2. M0 still needs the actual reference build/dispatch, verified model/tokenizer
-   inventories, exact GSQ/Q4 profile, frozen matched cases, complete independent
-   fixtures and reviewed quality budgets/baselines. Preserve historical source-lock
-   retrieval records rather than turning retrieval into execution evidence.
-3. M2.8 real SM89 algorithm implementation and measured tuning remain open; M4/M8
-   correctness, quality and performance gates remain later work. Do not start M3
-   loaders/tokenizers, inference, CUDA ops, HTTP generation, or production
-   registration under this M2 host-testable authorization.
+   Retain and inspect fresh reports. Historical report counts are not current-tree results; host/synthetic tests do not replace device evidence. The physical Linux CUDA link/run is a separate future gate.
+2. M0 remains blocked: suite UNFROZEN; `bench/reference/dispatch-audit.patch` is a narrow source-only Q3-linear/SwiGLU route-tracing patch, not complete phase/site instrumentation or observed dispatch. No reference build/run, original-BF16 baseline or approved budgets exist. `bench/reference/reference-source-acquisition.json` records source archive acquisition (10.6 MB and SHA/sourceDigest), not runtime evidence. Resolve tokenizer/config size discrepancy, verify artifacts/profile, complete independent fixtures and freeze matched cases. Preserve retrieval/acquisition history as source provenance, not execution.
+3. Validate new CUDA tests/kernels and Executor; establish physical Linux device link/run and correctness/quality/performance evidence. Executor is not serving integration. Continue the explicitly authorized M0/M1/M2 code work and easy-new-model scaffold, but do not represent scaffold as model support or alter qualification gates.
 
 ## Provenance and reference pointers
 

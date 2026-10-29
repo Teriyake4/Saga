@@ -1,45 +1,18 @@
 # Saga implementation status
 
-> **Windows update, 29 October 2026:** native Windows Ninja/MSVC Debug and
-> Release each passed 26/26 CTest groups with image decoding ON. Product packaging
-> passed, and the physical original RTX 4080 passed all 19 CUDA compile/device-link/
-> runtime checks. See [Windows / RTX 4080 evidence](windows-4080-evidence.md).
-> Native Linux GPU qualification, model/reference/quality evidence and full
-> milestone gates remain open. Windows-pending statements below are historical.
+> **Current snapshot, 29 October 2026:** M0/M1/M2 code work and easy-new-model scaffolding are authorized and present in the working tree; current macOS/Linux host validation passed 25/25 CTest groups in ten configurations, including sanitizers. The retained Windows report records Ninja/MSVC Debug and Release 26/26 CTest groups each, packaging checks, and physical original-4080 CUDA smoke 19/19. Linux ARM64 Clang 20/CUDA 12.8 compilation reportedly produced device-only SM89 and host objects, not a device link or run. Windows rerun and physical Linux GPU testing are later tasks. These reports do not close acceptance gates.
 
-Historical snapshot: **28 October 2026**. User authorization now includes finishing the
-host-testable M2 implementation; this supersedes earlier no-M2 boundaries preserved
-in historical notes. M2 planner/model-step/profile/startup slices are implemented
-and dual reviewed. Final macOS/Linux host matrices passed 25/25 in ten configurations
-after the final test-only early-notification regression; details and logs are in
-[m2-evidence.md](m2-evidence.md). Native Windows and physical original-4080
-checks were pending at that snapshot; the separate 29 October Windows results
-are recorded above. Native Linux GPU and M0/M1/M2 full exit gates remain blocked.
-The full feature scope and 95% throughput / 110% uncached-TTFT thresholds are
-unchanged; host results alone do not qualify CUDA, model quality, fit or performance.
-See [HANDOFF.md](HANDOFF.md).
+Historical snapshots/counts remain exactly historical: 25/25 in ten macOS/Linux host M2 configurations, 26/26 per Windows configuration and 19/19 Windows smoke checks, and earlier M1/M0 counts are not new current-tree results. M0 has no reference build/run/dispatch, frozen suite, original-BF16 baseline, or approved quality budgets. Full M0/M1/M2 gates remain open. Preserve the 95% throughput / 110% uncached-TTFT requirements; do not reinterpret status as passing. See [implementation snapshot](implementation-2026-10-29.md), [HANDOFF](HANDOFF.md), and [operator provenance](operator-provenance.md).
 
 ## M0 / M1 / M2 milestone gates
 
 | Milestone | Status | Implemented evidence | Outstanding exit-gate work |
 |---|---|---|---|
-| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned reference/model metadata and GGUF specification/selected source content, license/hash evidence, source/local-artifact audit tooling, partial independent encoding/projection fixtures and policy scaffolding | Complete reference-run environment, reference build/run and observed dispatch, verified component/weight/tokenizer bytes, exact GGUF profile, per-operator adoption decisions, frozen matched suite, complete layer/state fixtures and approved quality baselines/budgets; Switchyard reuse remains license-blocked |
-| **M1 - foundation and server shell** | **Implemented slices; exit remains blocked/unqualified** | Host Ninja/product presets; Linux presets/runner; optional bounded PNG/JPEG RGB adapter (default OFF); strict config precedence; process lifecycle/signal coverage; internal CUDA resource-owner/probe contracts; bounded evidence tooling; native Windows Ninja/MSVC Debug/Release 26/26 and original-4080 CUDA 19-check smoke passed | Native Linux original-4080 CUDA compile/device-link/run remains outstanding; no both-OS M1 exit qualification. VS2022-generator and hosted-CI runs are not established. OrbStack ARM64 host evidence does not qualify x86_64 Linux or CUDA |
-| **M2 - contracts and resource planning** | **Host-testable implementation M2.1-.7/.9 implemented; M2.8 policy implemented; full gate blocked** | Structural model/backend contracts and registries; metadata-driven allocation/context planner; step/request/result contracts; device/pair profiles and startup kernel binding; synchronous startup/grant/warm/capture/reconcile/approval composition. See [m2-evidence.md](m2-evidence.md) for source/test paths and targeted evidence | Typed bounded model-step requests/results and startup orchestration are implemented; production model/backend registrations, HTTP generation integration, compiled SM89 algorithm implementations and measured tuning, physical backend fences/device allocations, actual model inventory/fit, production-backend integration on native Windows/original-4080 hardware and full qualification remain outstanding |
+| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned sources and tokenizer/template bytes; frontend input index/candidates; artifact inventory, reference capture scaffolding, layer/state and pending target-vector fixtures, independent scalar oracle | Narrow source-only Q3-linear/SwiGLU route trace patch exists, but no complete phase/site instrumentation, observed dispatch, reference build/run, or frozen suite; original-BF16 baselines and quality budgets remain open; source-acquisition receipt is not runtime evidence; adoption decisions recorded in `operator-provenance.md`; Switchyard reuse remains license-blocked |
+| **M1 - foundation and server shell** | **Implementation present; exit blocked/unqualified** | Historical Windows Ninja/MSVC Debug/Release 26/26 and physical original-4080 smoke 19/19 reports; Linux verifier timeout fix and native Linux smoke runner are present. See dated snapshots below. | Current-tree Windows rerun and physical Linux CUDA compile/device-link/run are pending; ARM64 device-only/host-object compilation is not device link/run or qualification. VS2022-generator/hosted-CI status remains unestablished |
+| **M2 - contracts, planning and CUDA executor** | **Code present; full gate blocked** | Prior host contracts/planner/startup and historical 25/25 matrices; current tree adds BF16 baseline and SM89 WMMA CUDA path plus ledger-backed Executor and CUDA tests/driver | No claim of current rerun. Executor is not an `IGpuBackend` serving integration; no production registrations, full model execution, measured tuning, physical Linux run, or M0 quality/reference gates |
 
-Final M2 host validation passed 25/25 CTest groups in all ten configurations after
-rebuilding with the final test-only early-notification regression: macOS Debug,
-Release, ASan+UBSan and TSan; Linux GCC Debug/Release; Linux Clang Debug/Release,
-ASan+UBSan and TSan. Image decoding was ON and CUDA OFF. Four focused tests (`startup`,
-`step`, `model_contracts`, `runtime_integration`) each passed 20 repeat runs on macOS
-and Linux TSan (80 executions per OS). Product-only Release build/install and installed
-TOML+INI config checks passed on both earlier, with production source unchanged.
-No command timed out. The Linux verifier's descendant-cleanup timeout issue remains
-unfixed; final Linux tests used direct bounded preset commands and per-configuration
-CTest logs, not a new verifier snapshot/provenance claim. See [m2-evidence.md](m2-evidence.md).
-Those historical host results did not establish native Windows or physical CUDA;
-the newer Windows evidence above is separate. Model quality, fit, performance and
-native Linux GPU qualification remain open. M1's both-OS exit remains blocked.
+Historical M2 validation: 25/25 CTest groups in ten macOS/Linux configurations; focused groups passed 20 repeats on each TSan host. These historical figures and logs remain preserved in [m2-evidence.md](m2-evidence.md); they are not validation of the newly changed tree. Current-tree host validation also passed 25/25 groups in all ten configurations; the final Linux evidence runner passed install/config/source-stability checks. See [the current snapshot](implementation-2026-10-29.md) for logs and explicit Python skips. CUDA validation remains compile-only, not device-link/run. Model quality/fit/performance and physical Linux CUDA remain open; M1 cross-platform exit remains blocked.
 
 ## Runtime model format decision (planned)
 
@@ -61,7 +34,7 @@ GGUF-model support or new model/device implementation is supplied by this decisi
 
 | Area | Present implementation | Evidence/limits |
 |---|---|---|
-| Build | C++20 CMake targets, host Ninja/product presets, separate native-MSVC Debug/Release presets, Linux presets and bounded evidence runner | macOS and Ubuntu 25.04 aarch64 OrbStack host/product checks passed; Ubuntu 24.04 x86_64 CI configured but not run; Windows remains unvalidated natively. See [linux-build.md](linux-build.md) |
+| Build | C++20 CMake targets, host presets, Linux verifier and CUDA smoke tooling | Historical host/Windows counts preserved; current tree not rerun. Linux ARM64 SM89 device-only and host-object compile reported, no device link/run |
 | Server shell | Strict TOML + optional one-model INI + CLI merge, structured errors/logs, liveness, unavailable readiness/generation, empty model list and truthful metrics | Real-process HTTP/config tests; no model catalog/router or M5/M6 correct text API claim |
 | Bounds/security | Fixed HTTP workers/pending connection bound, header-count/body limits, strict framing/chunk/trailer parsing, I/O idle timeouts, localhost default, environment bearer auth | Raw-socket/idle/disconnect/restart tests; one request per connection; no TLS or absolute trickle-client deadline; trusted reverse proxy required for remote exposure |
 | Kernel contracts | Startup descriptor/support/prepare, well-formedness/compatibility-before-ranking, optional profile preferences, nonvirtual prepared launchers and actual workspace checks | Synthetic specialization guard/fallback/lifetime tests, invalid enum/GSQ3-group tests and zero-workspace alignment tests; no real CUDA inference implementation |
@@ -70,7 +43,7 @@ GGUF-model support or new model/device implementation is supplied by this decisi
 | Platform | Separate `saga_platform` target selects shared + native Windows or reusable POSIX sources; mapping, Unicode argv/environment and RAII shutdown adapters | macOS tests include >4-GiB windows, Unicode/environment bounds and prior signal restoration; OrbStack ARM64 host tests pass, but Windows runtime, Linux x86_64 and Linux CUDA remain unqualified |
 | Runtime primitives | Resource-retaining completions; bounded execution worker/reserved cleanup; generation-tagged sequence retirement; bounded single-active admission and committed-byte output | Unit and cross-component tests; owner-thread contracts enforced where specified; no HTTP generation integration or device synchronization |
 | Model/backend contracts | Structural artifact/model/program validation, distinct component/tensor identities, exact tied-weight aliases, independent owning registries, typed bounded model-step requests/results and host startup orchestration | Synthetic grant-backed composition, failure and lifetime tests; no production model/backend registrations or HTTP readiness/generation integration |
-| CUDA probes/resource ownership | Real `cp.async`/BF16 WMMA portability probe plus internal smoke-only stream/event ownership probe | Host fake-runtime checks only; neither CUDA translation unit was device-compiled, linked or run |
+| CUDA / M2 executor | Registered BF16 baseline and WMMA SM89 implementation, CUDA target/tests and ledger-backed Executor | Reported Clang 20 Linux ARM64 CUDA 12.8 device-only SM89 + host-object compilation only; no device link/run, NVCC, Windows retest, GPU correctness/performance, or serving backend |
 | Source locks | Five original reference pins plus the GGUF specification/selected ggml reader-source pin, actual source/build/license hashes and original/GSQ metadata | 114 inputs, 105 recorded-verified; new optional commit API 403 remains unverified; no reference binary, verified weights or matched benchmark |
 
 The M2 host contract/planning/startup slice is implemented, but remains synthetic

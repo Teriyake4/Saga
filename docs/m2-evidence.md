@@ -1,9 +1,6 @@
-# M2 host implementation and evidence ledger
+# M2 implementation and evidence ledger
 
-Snapshot: **28 October 2026**. Host-testable M2 implementation is authorized and
-implemented in the current source tree. All ten final host matrix configurations and
-specified repeat tests passed after rebuilding with the final early-notification
-test-only regression. Physical/production gates remain separate and outstanding.
+Historical host snapshot: **28 October 2026**. The prior M2 host implementation was authorized and implemented; ten host matrix configurations and specified repeat tests passed then. Those counts and logs remain historical and are not current-tree validation. The 29 October tree adds registered BF16 baseline/SM89 WMMA code and a ledger-backed Executor; reported Linux ARM64 Clang 20/CUDA 12.8 compilation reached device-only SM89 and host objects only, with no device link/run. The Executor is not an `IGpuBackend` serving integration. Current host validation passed 25/25 CTest groups in all ten macOS/Linux configurations, and the fresh Linux evidence runner passed install/config/scoped-source stability checks. Exact logs and skips are in the current snapshot; physical/production gates remain open. See [implementation snapshot](implementation-2026-10-29.md) and [operator provenance](operator-provenance.md).
 
 ## Per-task implementation and evidence
 
@@ -112,12 +109,8 @@ verifier snapshot or provenance claim is made. Historical M1 evidence and counts
 
 ## Pending qualification gates
 
-1. Native Windows/MSVC Debug/Release host validation remains outstanding.
-2. Compile, device-link and run the original RTX 4080 CUDA portability test on both
-   native Windows and Linux. No host synthetic test can satisfy it.
-3. M0 model/reference evidence, actual component inventories and resource sizes,
-   physical device measurements, production session/backend implementation, compiled
-   SM89 algorithms and measured tuning remain open. M0/M1/M2 full gates are not
-   production- or hardware-qualified by this host slice.
+1. Current-tree Windows/MSVC Debug/Release validation remains outstanding; the reported 29 October 26/26 runs per configuration are preserved historical evidence, not a rerun. Physical original-4080 smoke is likewise reported 19/19 in that report.
+2. Native Linux physical CUDA device-link/run remains outstanding. The reported Linux ARM64 Clang 20 device-only SM89 and host-object compile is not a link or run. The CUDA Executor/kernel additions require current-tree build/tests and correctness evidence.
+3. M0 model/reference evidence, actual component inventories and resource sizes, physical device measurements, production session/backend implementation and measured tuning remain open. The new Executor is ledger-backed but not an `IGpuBackend` serving integration. M0/M1/M2 full gates remain unqualified.
 4. M3+ loaders/tokenizers/inference/CUDA operations and HTTP generation are outside
    the current scope; do not represent this document as authorization for them.

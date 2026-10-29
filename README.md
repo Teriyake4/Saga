@@ -6,7 +6,7 @@ build/qualification target. Linux host development/testing is available; Windows
 Architecture, complete scope and blocking acceptance requirements
 are in [PROPOSAL.md](PROPOSAL.md) and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-**Current implementation slice: host-testable M2 contracts, planning and startup composition.** M2.1–M2.7/.9 host slices and M2.8 profile policy are implemented; final macOS/Linux host matrices passed 25/25 CTest groups in all ten configurations after the final test-only early-notification regression. See [docs/m2-evidence.md](docs/m2-evidence.md) for configurations, repeat tests, logs and limitations. Real compiled SM89 algorithms/tuning, physical backend qualification, native Windows and original-4080 evidence remain outstanding. No model loader, tokenizer execution, text inference, sampler, MTP or vision runtime exists. This is not a feature-complete or performance-qualified engine. The server never fabricates readiness, models, completions or token streams. See [docs/status.md](docs/status.md), [docs/m2-evidence.md](docs/m2-evidence.md), [docs/m1-evidence.md](docs/m1-evidence.md), and [docs/HANDOFF.md](docs/HANDOFF.md).
+**Current state (29 October 2026):** M0/M1/M2 implementation work has expanded in the working tree, including M0 artifact/frontend/reference tooling and partial fixtures, a registered CUDA BF16 baseline/SM89 WMMA path with a ledger-backed Executor (not an `IGpuBackend` serving integration), and an easy-new-model scaffold generator. Windows Ninja/MSVC Debug and Release (26/26 groups each), packaging, and physical original-4080 smoke (19/19 checks) are reported passed in the retained Windows evidence; those counts are historical reports and were not rerun against the current tree. Linux ARM64 Clang 20 device-only SM89 and host-object compilation was also reported successful with local CUDA 12.8 wheels, but not device-linked or run. Current macOS/Linux host validation passed 25/25 CTest groups in all ten configurations, including sanitizers; native Windows/device validation remains pending. M0 suite remains unfrozen; no reference dispatch/build/run, original-BF16 baseline, approved budgets, or performance qualification. See [docs/status.md](docs/status.md), [docs/implementation-2026-10-29.md](docs/implementation-2026-10-29.md), [docs/operator-provenance.md](docs/operator-provenance.md), and the milestone evidence files. The server does not provide model serving/readiness or fabricated generation.
 
 ## Build and test without a GPU
 
@@ -244,9 +244,7 @@ unverified.
 
 ## Real 4080 CUDA portability gate
 
-The optional CUDA target implements an instruction/result probe, not inference.
-It exercises aligned `cp.async`, BF16 WMMA, compiled SM89 identity and actual-kernel
-occupancy queries. It rejects other GPUs, including 4080 Super.
+The optional CUDA targets include both an instruction/result portability probe and an M2 BF16 projection implementation/test path; neither by itself is an inference server. The portability probe exercises aligned `cp.async`, BF16 WMMA, compiled SM89 identity and actual-kernel occupancy queries, and rejects other GPUs, including 4080 Super. The separately added BF16 projection path is an operator implementation/test scaffold, not model execution or `IGpuBackend` serving integration.
 
 Use a native Windows x64 MSVC developer prompt with Ninja, an original desktop
 RTX 4080 and a supported installed CUDA toolkit:
@@ -259,10 +257,7 @@ The script uses `cuda-windows`, retains verbose compilation/device-link evidence
 and checks both the runtime exit code and JSON result. Initial build floor is
 CUDA >=12.8; the exact MSVC/toolkit/driver matrix is not yet qualified. Linux CUDA portability and reference reproduction remain deferred workstreams.
 See [docs/cuda-portability.md](docs/cuda-portability.md) for evidence requirements.
-**This CUDA translation unit has not been compiled, device-linked or run here.**
-The native Windows original-4080 run is the active portability gate. The original
-cross-platform requirement still needs a separate Linux run later; host tests do
-not satisfy either device gate.
+Historical snapshot: the original probe had not been compiled/device-linked/run at that time. The later Windows report records 19/19 physical original-4080 smoke checks; it was not rerun against the current tree. The newly added Linux ARM64 SM89 device-only/host-object compilation was not device-linked or run. Current-tree and physical Linux CUDA evidence remain pending.
 
 ## Reference sources and reproducibility
 

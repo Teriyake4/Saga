@@ -1,6 +1,6 @@
 # Inference Engine Implementation Plan
 
-**Status:** Linux host development/testing and host-testable M2 implementation are authorized; native Windows remains the active production target. M2.1–M2.7/M2.9 host slices and M2.8 profile/selection policy are implemented. Final macOS/Linux host matrices passed 25/25 in ten configurations after the final test-only early-notification regression; see [docs/m2-evidence.md](docs/m2-evidence.md). Native Windows/MSVC, physical original-4080, model/reference evidence and real production algorithms remain pending. Earlier no-M2 instructions are historical and superseded. See [docs/status.md](docs/status.md).
+**Status (29 October 2026):** M0/M1/M2 code work and an easy-new-model scaffold are authorized. Previously recorded 25/25 M2 host matrices and 26/26 Windows Debug/Release plus 19/19 original-4080 smoke reports remain historical snapshots, not current-tree validation. Current macOS/Linux host checks passed 25/25 CTest groups in ten configurations, including sanitizers; current native Windows/device checks remain pending. M0 reference, frozen suite, BF16 baselines and quality budgets remain blocked; physical Linux GPU execution, device-link/run, production serving integration, tuning and full milestone gates are not complete. See [docs/status.md](docs/status.md) and [docs/implementation-2026-10-29.md](docs/implementation-2026-10-29.md). Earlier no-M2 boundaries are historical.
 **Date:** 27 October 2026.  
 **Design basis:** [PROPOSAL.md](PROPOSAL.md), including independent model runtimes, GPU backends, architecture kernels, and optional card/model–GPU tuning.
 
@@ -122,12 +122,12 @@ M6 and M7a can progress independently after M5; M8 may start after core M7a whil
 
 ### M1 — Portable foundation and server shell
 
-- [ ] **M1.1** Establish CMake/Ninja presets, C++20, SM89 CUDA compilation and tested Linux/MSVC toolchains. Linux host GCC/Clang presets and Ubuntu 24.04 x86_64 CI are configured; CI has not yet run, and native Windows and CUDA qualification remain outstanding. Enable tests/benchmarks separately from the product build.
+- [ ] **M1.1** Establish CMake/Ninja presets, C++20, SM89 CUDA compilation and tested Linux/MSVC toolchains. Linux host GCC/Clang presets and Ubuntu 24.04 x86_64 CI are configured; CI has not yet run. The 29 October report records native Windows Ninja/MSVC Debug and Release at 26/26 CTest groups each; these are historical report counts, not current-tree validation. Current-tree Windows retesting and Linux qualification remain incomplete. Enable tests/benchmarks separately from the product build.
 - [ ] **M1.2** Create the `apps/server/` entry point, server TOML, one-profile model INI (`--model-config`), startup flags, structured errors and operational logging. Preserve defaults → typed TOML → explicit INI fields → CLI → semantic validation, with no server/security override through INI and no model catalog. Select/pin HTTP and image-decoding dependencies behind narrow adapters.
 - [ ] **M1.3** Implement platform RAII for files/mapping, large offsets, environment/argument conversion, shutdown and thread lifecycle. Select shared plus native sources through `src/platform/shared/`, `src/platform/windows/` and enabled `src/platform/linux/`; Linux host selection uses POSIX-backed implementations. Host tests do not qualify Linux CUDA or production runtime. CUDA device/buffer/event/stream owners stay in `src/backends/cuda/`.
 - [ ] **M1.4** Add `/healthz`, initially unavailable `/readyz`, clean startup-failure unwinding and orderly shutdown. Do not fabricate model readiness.
 - [ ] **M1.5** Establish native-Windows Debug/Release host CI and installed-package/config evidence, with macOS host regression coverage. Linux host GCC/Clang CI for Ubuntu 24.04 x86_64 is now configured (not yet run); local OrbStack ARM64 host evidence is recorded separately. Native Linux/Windows device and production qualification remain outstanding. Establish an explicit real-4080 test procedure; host CI, cross-compilation and WSL do not qualify native-Windows CUDA execution.
-- [ ] **M1.6** Compile, device-link and run representative SM89 CUDA portability smoke kernels on a real original 4080 under both Linux and native Windows/MSVC. Exercise `cp.async`, BF16 MMA, kernel launch and result checks; verify occupancy queries and cooperative-launch support/resource bounds if those paths are used. Record toolchain flags, architecture targets and runtime evidence before relying on imported CUDA assumptions.
+- [ ] **M1.6** Compile, device-link and run representative SM89 CUDA portability smoke kernels on a real original 4080 under both Linux and native Windows/MSVC. The 29 October report records Windows physical-device smoke at 19/19 checks; the earlier 28 October plan/evidence was source-only, and the Windows report is not a current-tree rerun. Linux ARM64 Clang 20/CUDA 12.8 compilation reached device-only SM89 and host-object output, not device link/run. Retest current tree on Windows and complete native Linux device compile/link/run evidence. Exercise `cp.async`, BF16 MMA, kernel launch and result checks; verify occupancy queries and cooperative-launch support/resource bounds if those paths are used. Record toolchain flags, architecture targets and runtime evidence before relying on imported CUDA assumptions.
 
 **Exit gate:** model-free server builds/runs on Linux and native Windows, handles malformed configuration, and shuts down without leaking live worker threads or resources; representative real-4080 CUDA portability smoke passes on both OSes. Host-only CI cannot satisfy this gate.
 
@@ -322,16 +322,8 @@ The original plan was to begin with **M0.1–M0.4, M0.7–M0.8 and M1.1–M1.6**
 
 Do not start by writing every optimized kernel or importing the entire reference engine. Establish a runnable foundation, a matched performance baseline, and explicit model/backend contracts so subsequent speedups can be measured without sacrificing modularity.
 
-### Current execution boundary and handoff (2026-10-28)
+### Current execution boundary and handoff (2026-10-29)
 
-Linux host development/testing is authorized; native Windows remains the active
-production target. M1 source slices and evidence limitations are detailed in
-`docs/m1-evidence.md`. Linux OrbStack ARM64 host/product checks passed, but M1 exit
-remains blocked pending native Windows/MSVC Debug/Release and real original-4080
-CUDA evidence on both Linux and Windows. Ubuntu 24.04 x86_64 CI is configured but
-not run; no CUDA device compile/link/run or model/reference/performance result exists.
+Code implementation for M0/M1/M2 plus the easy-new-model scaffold is authorized. Current host validation passed 25/25 CTest groups in ten macOS/Linux configurations; see `docs/implementation-2026-10-29.md` for exact scope, skips, logs and remaining gates. The Windows report dated 2026-10-29 records Ninja/MSVC Debug/Release 26/26 CTest groups each, packaging checks, and physical original-4080 CUDA smoke 19/19; preserve it as a reported historical run, not a rerun of this tree. Linux ARM64 Clang 20 compilation with CUDA 12.8 wheels reached device-only SM89 and host-object compilation only—not device link or execution. Windows retesting and a physical Linux CUDA run remain future work.
 
-Host-testable M2 implementation is authorized and recorded in `docs/m2-evidence.md`;
-this does not authorize M3+ inference integration or close M0/M1/M2 qualification.
-M0 remains blocked; see `docs/m0-evidence.md`. Native Windows/MSVC and physical
-original-4080 evidence remain pending. See `docs/status.md` and `docs/HANDOFF.md`.
+M0 remains partial/blocked: a narrow source-only Q3-linear/SwiGLU route tracing patch exists (`bench/reference/dispatch-audit.patch`), but there is no complete phase/site instrumentation or observed dispatch, reference build/run, frozen suite, BF16 baseline, or approved quality budgets. M1/M2 implementation presence does not close gates; real production `IGpuBackend`/serving integration, tuning and device qualification remain open. See `docs/implementation-2026-10-29.md`, `docs/status.md`, `docs/HANDOFF.md`, and the milestone evidence files.

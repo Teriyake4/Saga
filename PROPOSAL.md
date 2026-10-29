@@ -1,10 +1,10 @@
 # Specialized C++ Inference Engine — Architecture and Research
 
-**Design proposal · researched and revised 27 October 2026 · host foundation implementation started; no model execution or local GPU benchmarks yet**
+**Design proposal · researched 27 October 2026 · implementation snapshot updated 29 October; no model execution, reference benchmark, or release qualification**
 
 Current implementation and validation evidence: [docs/status.md](docs/status.md). Requirements below are not claims of completed capabilities.
 
-**Current user-directed sequence:** native Windows remains the production target; Linux host development/testing is enabled, while Linux CUDA, model/runtime and production qualification remain outstanding. Keep cross-platform gates explicit and do not claim completion from host results alone. Each instance runs one model; an optional single-profile INI configures that model, not a multi-model router.
+**Current user-directed sequence (29 October 2026):** M0/M1/M2 code work and an easy-new-model scaffold are authorized. Native Windows is the active production target; its retained report records Debug/Release 26/26 and original-4080 smoke 19/19, but Windows retesting against the current tree is later work. Linux CUDA device-link/run, model/reference baselines and full qualification remain open. See [the implementation snapshot](docs/implementation-2026-10-29.md). Keep historical counts and all acceptance gates distinct. Each instance runs one model; an optional single-profile INI configures that model, not a multi-model router.
 
 Build a small C++20/CUDA engine with **independent model runtimes and GPU backends, plus optional model–GPU tuning profiles**. The first shipping target is **RTX 4080 16 GB + Qwen3.8-27B GSQ3, a GPU-resident text decoder, native MTP, adjustable context, selectable KV-cache quantization, and image input with optional CPU vision/projector execution**. Ship one server executable exposing an OpenAI-compatible Chat Completions API, targeting native Windows for production and Linux host development/testing, initially with one active generation request; Linux CUDA and production qualification remain outstanding. New models implement a small model-runtime class and declare their optional capabilities.
 
@@ -1039,7 +1039,7 @@ Implementation classes override startup descriptor/support/prepare methods, whil
 
 ### New model
 
-Create one model integration package containing `IModelDefinition`, `IModelRuntime`, operator/fusion requirements, bindings/importer, frontend policy and fixtures; register one definition factory. Return optional providers only where supported. Inspect metadata into `ModelSpec`, describe the native program, lower it through the selected backend, and instantiate with the approved resource plan. Add optional backend specializations only where existing operators are insufficient or measurements justify them. No scheduler or HTTP-route changes should be necessary for an existing capability.
+The `tools/new_model.py` generator and [adding-models guide](docs/adding-models.md) provide an easy-new-model scaffold for a package containing `IModelDefinition`, `IModelRuntime`, operator/fusion requirements, bindings/importer, frontend policy and fixtures. Generated stubs are compile/fail-closed scaffolding, not model support: no generated model is registered or runnable merely by generation. Return optional providers only where supported. Inspect metadata into `ModelSpec`, describe the native program, lower it through the selected backend, and instantiate with the approved resource plan. Add optional backend specializations only where existing operators are insufficient or measurements justify them. No scheduler or HTTP-route changes should be necessary for an existing capability.
 
 Supply a supported context/codec/MTP/vision matrix and independent state/logit tests. Reuse low-level primitives when appropriate; use configuration variants within the same model implementation only when mathematics and numerical contracts match. Different model mathematics gets distinct operator contracts and, when needed, new backend implementations; compatible primitives remain reusable across model classes. The integration remains more work than implementing a few virtual functions when new operators or conversion semantics are involved.
 

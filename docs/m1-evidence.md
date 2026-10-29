@@ -1,17 +1,18 @@
 # M1.1–M1.6 implementation and evidence
 
-> **Windows update, 29 October 2026:** native Ninja/MSVC Debug and Release each
-> passed 26/26 CTest groups with image decoding ON, installed-package checks
-> passed, and the physical original-4080 CUDA compile/device-link/run passed all
-> 19 checks. See [the current Windows evidence](windows-4080-evidence.md). Native
-> Linux original-4080, VS2022-generator and hosted-CI results remain unestablished;
-> M0/M1 full gates are not closed. The snapshot and next steps below are historical.
+> **29 October integration note:** the Windows report records Ninja/MSVC Debug and
+> Release at 26/26 CTest groups each, packaging checks, and physical original-4080
+> CUDA smoke at 19/19; see [Windows evidence](windows-4080-evidence.md). Raw report
+> bundle is not locally available and these runs were not repeated against the
+> current tree. Linux verifier timeout fix and CUDA smoke runner are present. Linux
+> ARM64 Clang 20/CUDA 12.8 device-only SM89 and host-object compilation reportedly
+> succeeded, but there was no device link/run. Current host validation passed 25/25
+> CTest groups in ten macOS/Linux configurations; the Linux verifier also passed
+> install/config/scoped-source stability checks. See [current validation](implementation-2026-10-29.md).
+> Current Windows retesting, native Linux GPU, VS2022-generator and hosted CI remain
+> outstanding. Full gates are not closed.
 
-Historical snapshot: **28 October 2026**. M1 source slices and Linux host development/testing
-are authorized; Luna implementation and independent review/fix/re-review were used
-for source steps. Native Windows/4080 evidence remains pending. This is an evidence
-record, not M1 exit qualification. No M2/M3/M4+ implementation or integration is
-authorized.
+Historical snapshot: **28 October 2026**. The 28 October implementation and evidence tables below remain a historical snapshot; their Windows-pending language and counts are not overwritten by the 29 October report. Later authorization includes M0/M1/M2 code work and easy-new-model scaffolding. No historical count is a current-tree rerun or M1 exit qualification.
 
 ## Source slices
 
@@ -22,7 +23,7 @@ authorized.
 | M1.3 — platform RAII and ownership | File/mapping offsets, Unicode paths/arguments/environment, shutdown/thread lifecycle adapters; internal CUDA device/buffer/event/stream owners in `src/backends/cuda/resource_owners.h`. | Host and fake-runtime tests only. Windows helper/native behavior and physical CUDA ownership are not natively validated; failed synchronization is not a completion fence. |
 | M1.4 — server shell lifecycle | Model-free health/unavailable-readiness behavior, startup failure and orderly shutdown; occupied/fixed-port restart, SIGINT/SIGTERM and private Windows Ctrl+C/Ctrl+Break coverage. | macOS host tests passed; Windows-specific control helper was not run natively. No model readiness or generation. |
 | M1.5 — CI, packaging and evidence | Windows Debug/Release CI/devshell setup, installed-package/config checks, bounded evidence snapshots of eligible files under relevant roots (including dirty/untracked source), strict report validation. Windows Debug CI enables `-EnableImageDecoder`. | Workflow/configuration is not a CI run. Snapshot scope and exclusions are detailed in [windows-build.md](windows-build.md#host-ci); it covers listed roots/files and named build/cache exclusions, not arbitrary `.gitignore` rules. It is bounded change evidence, not complete or authenticated provenance. PowerShell 7.5.4 parsed wrapper syntax and macOS rejection gates only, not native Windows execution. |
-| M1.6 — SM89 CUDA probe | Original-4080 portability probe; report requires `__CUDA_ARCH__` 890 and binary architecture 89, with 19 named checks. | CUDA translation unit has not been compiled/device-linked/run. Host fake-runtime resource-owner tests do not validate this probe. |
+| M1.6 — SM89 CUDA portability probe | Original-4080 portability probe; report requires `__CUDA_ARCH__` 890 and binary architecture 89, with 19 named checks. | **Historical 28 October state:** source-only; not compiled/device-linked/run. **Reported 29 October Windows evidence:** physical original-4080 smoke passed 19/19 checks (see [Windows evidence](windows-4080-evidence.md)); it was not rerun against the current tree and the raw bundle is unavailable locally. Linux ARM64 Clang 20/CUDA 12.8 work reached device-only SM89 and host-object compilation only—not device link/run. Current-tree CUDA/device validation and native Linux physical-GPU evidence remain pending. Host fake-runtime tests do not validate this probe. |
 
 ## Validation actually run
 
@@ -84,7 +85,7 @@ performed. Linux host evidence is ARM64 under OrbStack; it does not establish Li
 x86_64 or native Windows support. M1's full exit remains **blocked/unqualified**;
 no toolchain pin is qualified.
 
-## Native next steps
+## Native next steps (remaining work)
 
 From a **PowerShell 7.4+ x64 Visual Studio developer shell** on native Windows, run
 both host configurations with the optional decoder enabled, then the CUDA smoke on
@@ -96,11 +97,7 @@ pwsh -NoProfile -File .\tools\windows\verify.ps1 -Configuration Release -EnableI
 pwsh -NoProfile -File .\tools\windows\cuda-smoke.ps1 -Device 0
 ```
 
-Retain the generated report/artifacts and inspect the actual compiler, toolkit,
-driver, device identity and result. These commands are required next evidence, not
-results already obtained. Do not substitute CI setup, host tests (including Linux
-OrbStack), a fake runtime, a different 4080 SKU, or a source-level architecture
-check for native execution. Linux host development/testing is authorized; Linux
+Retain a fresh report/artifacts and inspect compiler, toolkit, driver, device identity and results. The Windows report already recorded above is historical and is not a rerun of the current tree. Do not substitute CI setup, host tests (including Linux OrbStack), a fake runtime, a different 4080 SKU, or a source-level architecture check for native execution. Linux host development/testing is authorized; Linux
 native original-4080 CUDA evidence remains outstanding. M0 external
 artifact/reference/baseline gates remain separately blocked as documented in
 [m0-evidence.md](m0-evidence.md). See [linux-build.md](linux-build.md) for the Linux

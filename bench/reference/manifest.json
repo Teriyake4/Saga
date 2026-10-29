@@ -72,20 +72,32 @@
     },
     {
       "compatibility": "unverified",
-      "component": "tokenizer.json/vocab/merges bytes not retrieved",
-      "files": [],
+      "component": "tokenizer.json and tokenizer_config.json bytes retrieved; offline frontend checked, runtime/weight binding unverified",
+      "files": [
+        {
+          "bytes": 12809320,
+          "path": "tokenizer.json",
+          "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+        },
+        {
+          "bytes": 17928,
+          "path": "tokenizer_config.json",
+          "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27"
+        }
+      ],
       "id": "tokenizer",
       "repository": "Qwen/Qwen3.8-27B",
       "required": true,
       "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
-      "status": "metadata-only",
+      "status": "unresolved",
       "unresolved": [
-        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+        "Actual pinned original/GSQ tokenizer and template bytes match; see frontend-lock.json and ../workloads/frontend-input-evidence.json.",
+        "Standalone vocab/merges files were not acquired. Embedded tokenizer vocabulary and actual embedding/head tensor bindings, padding and runtime frontend parity still require component verification."
       ]
     },
     {
       "compatibility": "unverified",
-      "component": "chat template metadata retrieved; execution/binding unverified",
+      "component": "chat template bytes and local rendering checked; reference/runtime binding unverified",
       "files": [
         {
           "bytes": 8952,
@@ -97,9 +109,9 @@
       "repository": "Qwen/Qwen3.8-27B",
       "required": true,
       "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
-      "status": "metadata-only",
+      "status": "unresolved",
       "unresolved": [
-        "Template bytes were retrieved and hashed; tokenizer binding, rendering, generation defaults and prompt token IDs remain unverified."
+        "Exact local candidate rendering/token IDs are preserved in ../workloads/inputs/; reference-engine rendering parity, generation defaults and complete component binding remain unverified."
       ]
     },
     {
@@ -117,12 +129,12 @@
     }
   ],
   "blockers": [
-    "M0.1 native original RTX 4080 hardware/toolchain conditions and both-OS evidence missing.",
-    "M0.2 pinned reference not built/run; exact reproducible commands/patches unresolved.",
+    "M0.1 historical Windows original RTX 4080 host/smoke facts are reported; controlled reference conditions, current-tree rerun and native Linux device evidence remain missing.",
+    "M0.2 pinned reference source acquired and narrow source-only Q3 route trace patch prepared; no reference build/run or complete phase/site dispatch capture.",
     "M0.3 full model/MTP/vision/tokenizer inventory and weight checksums/compatibility unverified.",
-    "M0.4 no inference code imported; per-file licensing/attribution review pending; Switchyard LICENSE probe returned 404.",
+    "M0.4 current kernels/oracles independently implemented; see ../../docs/operator-provenance.md. Switchyard reuse remains forbidden after the historical LICENSE 404.",
     "M0.5 mandatory suite/OS scope and actual phase/site A16/A8/rounding dispatch unfrozen.",
-    "M0.6 independent scalar/layer/state fixtures missing.",
+    "M0.6 small scalar/layer and target-derived matrix recurrence fixtures exist; the complete target layer/state/frontend fixture inventory and compiled precision evidence remain missing.",
     "M0.7 original-BF16 baselines, datasets, budgets and statistical preregistration unresolved.",
     "M0.8 converter/build/dependency toolchain pins and artifact licenses/inventories not complete."
   ],
@@ -256,17 +268,23 @@
   ],
   "hardware": {
     "available_vram_bytes": null,
-    "compiler": null,
-    "cpu": null,
-    "cuda_toolkit": null,
-    "driver": null,
-    "gpu_sku": null,
+    "compiler": "Historical Windows report: MSVC 19.51.36248.0 / VS Build Tools 2026 with Ninja",
+    "cpu": "Historical Windows report: Ryzen 7 7800X3D",
+    "cuda_toolkit": "Historical Windows report: 13.3.73",
+    "driver": "Historical Windows report: 610.88",
+    "gpu_sku": "Historical Windows report: original NVIDIA GeForce RTX 4080, 76 SM, CC 8.9",
     "linux_native_evidence": null,
-    "os": null,
-    "power_display_clocks_thermals": null,
-    "ram_bytes": null,
+    "os": "Historical Windows report: Windows 11 Pro x64 10.0.26200",
+    "power_display_clocks_thermals": "No controlled benchmark conditions recorded; reported idle observation is not load or thermal qualification.",
+    "ram_bytes": 33444892672,
     "status": "unresolved",
-    "windows_native_msvc_evidence": null
+    "windows_native_msvc_evidence": {
+      "record": "../../docs/windows-4080-evidence.md",
+      "date": "2026-10-29",
+      "scope": "Reported prior native host tests and original-4080 portability smoke, not reference execution or current-tree qualification",
+      "raw_bundle_available_in_this_checkout": false,
+      "current_tree_rerun": false
+    }
   },
   "mandatory_cases": [],
   "model_metadata": "model-metadata.json",

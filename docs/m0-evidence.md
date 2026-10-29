@@ -1,6 +1,8 @@
 # M0 evidence and completion checklist
 
-Status: **partial / blocked**, 28 October 2026. The user authorized M0 work using
+Status: **partial / blocked**, updated 29 October 2026. New artifact inventory, frontend index, reference capture scaffolding and partial independent layer/state fixtures are present; current host validation passed 25/25 CTest groups in ten macOS/Linux configurations (see the current snapshot for scope and skips). Ten frontend files (five per model) are pinned/hash-verified. Three original/GSQ pairs match: `tokenizer.json`, `tokenizer_config.json`, and `chat_template.jinja`; the model and generation configs differ. Token JSON has 248,077 entries versus 248,320 in config; this is an unresolved discrepancy, not evidence to silently reconcile. Input candidates 128/2048/7680 plus 512 reserve are tracked. The suite remains **UNFROZEN**; there is no complete phase/site instrumentation or observed dispatch, reference build/run, original-BF16 baseline, or approved quality budget. The narrow `bench/reference/dispatch-audit.patch` is a source-only Q3-linear/SwiGLU route-tracing patch; phase is unknown and graph-capture selection is not graph replay. `bench/reference/reference-source-acquisition.json` records source archive acquisition (10.6 MB, SHA/sourceDigest), not reference execution. See [the 29 October snapshot](implementation-2026-10-29.md) and [operator provenance](operator-provenance.md).
+
+Historical evidence and counts below remain unchanged and historical. The user authorized M0 work using
 GPT6 Luna implementation plus independent review/fix/re-review steps. Independent
 slices may run in parallel with disjoint write scopes. This is not authorization
 to claim missing measurements, approve arbitrary quality budgets, or complete
@@ -31,7 +33,13 @@ M1/M2 by changing their gates.
    polynomial, all code positions, and every finite binary16 pattern checked
    against the standard library. This is the declared reference storage contract,
    not verification of publisher GSQ codes/scales, a GGUF profile, complete Qwen
-   layer/GDN/state math, or an original-BF16 quality baseline.
+   layer/GDN/state math, or an original-BF16 quality baseline. A separate small
+   target-vector GDN fixture accepts `alpha = exp(g)`, `beta`, and q/k after
+   optional normalization, with an explicit 2x2 recurrence formula. This is a
+   hand-sized independent oracle only—not a compiled target kernel, full layer/state
+   fixture, or full-model validation. The bounded paired token-NLL analyzer is
+   documented in [m0-quality-evaluation.md](m0-quality-evaluation.md); it consumes
+   supplied records and does not execute the baseline model or set budgets.
 
 All slices received separate Luna reviews and focused fixes/re-reviews. No model
 weights were downloaded and no upstream executables were run. Retrieved source
@@ -42,16 +50,16 @@ preserved as source data. The server and its not-ready behavior are unchanged.
 
 | Gate | Present evidence | Remaining requirement |
 |---|---|---|
-| M0.1 | macOS arm64 development history plus bounded Linux host build/test evidence from Ubuntu 25.04 aarch64 OrbStack (2026-10-28); Linux host facts are recorded in [m1-evidence.md](m1-evidence.md) | Actual original RTX 4080 target hardware, OS/toolchain/driver, VRAM, CPU/RAM and power/display/runtime conditions; native Windows evidence remains unavailable |
-| M0.2 | NInfer-4080, llama.cpp KV and GGUF specification/selected reader-source pins | Build/run the pinned reference, preserve reproducible commands/binary/patch identities, observe actual dispatch; verify the exact GSQ/Q4 GGUF mapping |
+| M0.1 | Historical Windows report records original RTX 4080 testing; Linux ARM64 limited compile facts are in [implementation-2026-10-29.md](implementation-2026-10-29.md) | Current-tree rerun and complete reproducible target/reference environment record; Linux device-link/run and reference conditions remain open |
+| M0.2 | NInfer-4080, llama.cpp KV and GGUF specification/selected reader-source pins; narrow source-only Q3-linear/SwiGLU route-tracing patch and source-acquisition receipt | Complete phase/site instrumentation and observed dispatch; reference build/run with reproducible commands and binary/patch identities; verify exact GSQ/Q4 GGUF mapping. The 10.6 MB SHA/sourceDigest acquisition receipt is not runtime evidence |
 | M0.3 | Pinned metadata, structural binding checks and opt-in local byte verifier | Full original/GSQ/MTP/vision/tokenizer byte inventories, checksums and independent component/frontend compatibility; settle the GGUF component/profile layout |
-| M0.4 | Existing license/source inventory; no inference code imported; Switchyard reuse forbidden pending license evidence | Per-initial-operator adaptation versus independent-implementation decision and any required per-file attribution review |
+| M0.4 | Independent Saga implementation decision for newly authored BF16 baseline/WMMA path; adoption defaults to independent unless explicit per-operator approval; see [operator-provenance.md](operator-provenance.md) | Preserve per-operator independent oracle and attribution records; resolve Switchyard license before any reuse |
 | M0.5 | Explicit candidate case inventory and fail-closed frozen-suite checks | Nonempty reviewed mandatory suite, exact rendered token IDs/configurations, native OS scope, observed precision/rounding/head/KV/graph/sampling settings and reference measurements |
 | M0.6 | Independent storage and small tensor/projection fixtures | Complete target layer, recurrent/state, continuation and frontend fixtures with independent provenance; current partial fixtures do not satisfy the complete inventory |
 | M0.7 | Quality schema/policy and explicit null/unfrozen budgets | Original-BF16 baseline execution, pinned datasets/disjoint splits, reviewed metrics/budgets/confidence/sample-size policy and required baseline results |
 | M0.8 | Expanded source locks, license bytes, audit tooling and tests | Remaining artifact/dataset/converter/build/toolchain identities and reproducible execution evidence |
 
-No whole M0 checkbox is closed by this continuation. The quality manifest's
+No whole M0 checkbox is closed by this continuation. The current suite remains UNFROZEN; new fixtures and hashes do not constitute reference execution or quality baseline. The quality manifest's
 complete independent-fixture inventory remains unresolved; the small scalar
 fixture is not used to clear the broader layer/state evidence gate. Mandatory
 cases, quality budgets and results remain unfrozen/null rather than fabricated.
@@ -85,11 +93,7 @@ python3 -B -m unittest discover -s bench/tests -v
 python3 -O -B -m unittest discover -s bench/tests -v
 ```
 
-Final local validation: **57/57 Python tests passed**, both normally and with
-`-O`; all **18/18 CTest groups passed** in the existing macOS Debug, Release,
-ASan/UBSan and TSan presets. No CUDA, Windows, upstream reference or model run
-was performed. The default audit remained exit 1 with all external gates blocked.
-`git diff --check` passed.
+Historical local validation: **57/57 Python tests passed** normally and with `-O`; **18/18 CTest groups** passed in the then-existing macOS presets. These are historical counts, not validation of the 29 October tree. Current host validation is recorded separately in [the 29 October snapshot](implementation-2026-10-29.md). The default audit was recorded exit 1 (blocked); no reference execution or original-BF16 baseline is evidenced here.
 
 The structure-only command checks schemas/consistency without accessing artifacts
 or the network. The default audit intentionally exits **1 (blocked)** while M0
