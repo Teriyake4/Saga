@@ -1,0 +1,8 @@
+{
+  "id": "native-mtp-7680",
+  "class": "native-mtp-input-candidate",
+  "target_prompt_tokens": 7680,
+  "max_new_tokens": 512,
+  "template_options": {"add_generation_prompt": true, "tools": [], "documents": [], "date_string": "2025-01-15", "enable_thinking": true, "reasoning_effort": "xhigh", "preserve_thinking": true, "add_vision_id": false},
+  "messages": [{"role": "user", "content": "This is a fixed frontend workload candidate intended to probe a long prompt close to an eight-thousand-token context boundary. It contains neutral repeated text only and does not imply any verified runtime dispatch or MTP behavior. "}]
+}
