@@ -22,6 +22,35 @@ New-Item -ItemType Directory -Force -Path $binary, $install | Out-Null
 $log = Join-Path $evidence 'verify.log'
 $transcript = Join-Path $evidence 'transcript.txt'
 Start-Transcript -Path $transcript -Force | Out-Null
+function Assert-ConfiguredBuildCache([string]$CachePath, [string]$RequestedConfiguration) {
+    $cacheLines = Get-Content $CachePath
+    $cacheValues = @{}
+    foreach ($key in 'CMAKE_GENERATOR', 'CMAKE_BUILD_TYPE', 'CMAKE_CONFIGURATION_TYPES', 'SAGA_BUILD_TESTS') {
+        $entry = $cacheLines | Where-Object { $_ -match "^${key}:[^=]*=(.*)$" } | Select-Object -Last 1
+        if ($entry) { $cacheValues[$key] = [regex]::Match($entry, "^${key}:[^=]*=(.*)$").Groups[1].Value }
+    }
+    if ($cacheValues['SAGA_BUILD_TESTS'] -ne 'ON') { throw 'Host tests are disabled or missing in the configured CMake cache' }
+
+    $generator = $cacheValues['CMAKE_GENERATOR']
+    if ($generator -match '^Visual Studio ') {
+        $configurations = @($cacheValues['CMAKE_CONFIGURATION_TYPES'] -split ';' | Where-Object { $_ })
+        if ($configurations -notcontains $RequestedConfiguration) {
+            throw "Requested configuration $RequestedConfiguration is not available in the Visual Studio cache"
+        }
+    } elseif ($generator -eq 'Ninja Multi-Config') {
+        $configurations = @($cacheValues['CMAKE_CONFIGURATION_TYPES'] -split ';' | Where-Object { $_ })
+        if ($configurations -notcontains $RequestedConfiguration) {
+            throw "Requested configuration $RequestedConfiguration is not available in the Ninja Multi-Config cache"
+        }
+    } elseif ($generator -in @('Ninja', 'NMake Makefiles', 'NMake Makefiles JOM', 'MinGW Makefiles', 'Unix Makefiles')) {
+        if ($cacheValues['CMAKE_BUILD_TYPE'] -cne $RequestedConfiguration) {
+            throw "Requested configuration $RequestedConfiguration does not match single-config CMAKE_BUILD_TYPE '$($cacheValues['CMAKE_BUILD_TYPE'])'"
+        }
+    } else {
+        throw "Unsupported CMake generator for configuration validation: '$generator'"
+    }
+}
+
 function Invoke-Checked([string]$Name, [string]$Executable, [string[]]$Arguments) {
     "`n=== $Name ===" | Tee-Object -FilePath $log -Append
     "COMMAND: $Executable $($Arguments -join ' ')" | Tee-Object -FilePath $log -Append
@@ -55,6 +84,7 @@ try {
     Invoke-Checked 'Configure' 'cmake' $configureArgs
     $cache = Join-Path $binary 'CMakeCache.txt'
     if (-not (Test-Path $cache)) { throw 'Configure succeeded but CMakeCache.txt is absent' }
+    Assert-ConfiguredBuildCache $cache $Configuration
     Copy-Item $cache (Join-Path $evidence 'CMakeCache.txt')
     $compilerFacts = Join-Path $evidence 'compiler-facts'
     New-Item -ItemType Directory -Path $compilerFacts | Out-Null

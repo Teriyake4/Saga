@@ -1,22 +1,31 @@
 # Saga implementation status
 
-Snapshot: **28 October 2026**. User authorization now includes finishing the
+> **Windows update, 29 October 2026:** native Windows Ninja/MSVC Debug and
+> Release each passed 26/26 CTest groups with image decoding ON. Product packaging
+> passed, and the physical original RTX 4080 passed all 19 CUDA compile/device-link/
+> runtime checks. See [Windows / RTX 4080 evidence](windows-4080-evidence.md).
+> Native Linux GPU qualification, model/reference/quality evidence and full
+> milestone gates remain open. Windows-pending statements below are historical.
+
+Historical snapshot: **28 October 2026**. User authorization now includes finishing the
 host-testable M2 implementation; this supersedes earlier no-M2 boundaries preserved
 in historical notes. M2 planner/model-step/profile/startup slices are implemented
 and dual reviewed. Final macOS/Linux host matrices passed 25/25 in ten configurations
 after the final test-only early-notification regression; details and logs are in
-[m2-evidence.md](m2-evidence.md). Native Windows and physical original-
-4080 gates remain pending. M0/M1/M2 full exit gates remain blocked. The full feature
-scope and 95% throughput / 110% uncached-TTFT thresholds are unchanged; host results
-do not qualify CUDA, Windows, model quality, fit, or performance. See [HANDOFF.md](HANDOFF.md).
+[m2-evidence.md](m2-evidence.md). Native Windows and physical original-4080
+checks were pending at that snapshot; the separate 29 October Windows results
+are recorded above. Native Linux GPU and M0/M1/M2 full exit gates remain blocked.
+The full feature scope and 95% throughput / 110% uncached-TTFT thresholds are
+unchanged; host results alone do not qualify CUDA, model quality, fit or performance.
+See [HANDOFF.md](HANDOFF.md).
 
 ## M0 / M1 / M2 milestone gates
 
 | Milestone | Status | Implemented evidence | Outstanding exit-gate work |
 |---|---|---|---|
-| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned reference/model metadata and GGUF specification/selected source content, license/hash evidence, source/local-artifact audit tooling, partial independent encoding/projection fixtures and policy scaffolding | Actual original-4080 environment, reference build/run and observed dispatch, verified component/weight/tokenizer bytes, exact GGUF profile, per-operator adoption decisions, frozen matched suite, complete layer/state fixtures and approved quality baselines/budgets; Switchyard reuse remains license-blocked |
-| **M1 - foundation and server shell** | **Implemented slices; exit remains blocked/unqualified** | Host Ninja/product presets; Linux presets/runner; optional bounded PNG/JPEG RGB adapter (default OFF); strict config precedence; process lifecycle/signal coverage; internal CUDA resource-owner/probe contracts; bounded evidence tooling | Native Windows/MSVC Debug/Release and real original-4080 CUDA compile/device-link/run on both Linux and Windows remain outstanding; no M1 exit qualification. OrbStack ARM64 host evidence does not qualify x86_64 Linux or CUDA |
-| **M2 - contracts and resource planning** | **Host-testable implementation M2.1-.7/.9 implemented; M2.8 policy implemented; full gate blocked** | Structural model/backend contracts and registries; metadata-driven allocation/context planner; step/request/result contracts; device/pair profiles and startup kernel binding; synchronous startup/grant/warm/capture/reconcile/approval composition. See [m2-evidence.md](m2-evidence.md) for source/test paths and targeted evidence | Typed bounded model-step requests/results and startup orchestration are implemented; production model/backend registrations, HTTP generation integration, compiled SM89 algorithm implementations and measured tuning, physical backend fences/device allocations, actual model inventory/fit, native Windows/MSVC, original-4080 hardware and full qualification remain outstanding |
+| **M0 - sources and reference baseline** | **Partial / blocked** | Pinned reference/model metadata and GGUF specification/selected source content, license/hash evidence, source/local-artifact audit tooling, partial independent encoding/projection fixtures and policy scaffolding | Complete reference-run environment, reference build/run and observed dispatch, verified component/weight/tokenizer bytes, exact GGUF profile, per-operator adoption decisions, frozen matched suite, complete layer/state fixtures and approved quality baselines/budgets; Switchyard reuse remains license-blocked |
+| **M1 - foundation and server shell** | **Implemented slices; exit remains blocked/unqualified** | Host Ninja/product presets; Linux presets/runner; optional bounded PNG/JPEG RGB adapter (default OFF); strict config precedence; process lifecycle/signal coverage; internal CUDA resource-owner/probe contracts; bounded evidence tooling; native Windows Ninja/MSVC Debug/Release 26/26 and original-4080 CUDA 19-check smoke passed | Native Linux original-4080 CUDA compile/device-link/run remains outstanding; no both-OS M1 exit qualification. VS2022-generator and hosted-CI runs are not established. OrbStack ARM64 host evidence does not qualify x86_64 Linux or CUDA |
+| **M2 - contracts and resource planning** | **Host-testable implementation M2.1-.7/.9 implemented; M2.8 policy implemented; full gate blocked** | Structural model/backend contracts and registries; metadata-driven allocation/context planner; step/request/result contracts; device/pair profiles and startup kernel binding; synchronous startup/grant/warm/capture/reconcile/approval composition. See [m2-evidence.md](m2-evidence.md) for source/test paths and targeted evidence | Typed bounded model-step requests/results and startup orchestration are implemented; production model/backend registrations, HTTP generation integration, compiled SM89 algorithm implementations and measured tuning, physical backend fences/device allocations, actual model inventory/fit, production-backend integration on native Windows/original-4080 hardware and full qualification remain outstanding |
 
 Final M2 host validation passed 25/25 CTest groups in all ten configurations after
 rebuilding with the final test-only early-notification regression: macOS Debug,
@@ -28,8 +37,9 @@ TOML+INI config checks passed on both earlier, with production source unchanged.
 No command timed out. The Linux verifier's descendant-cleanup timeout issue remains
 unfixed; final Linux tests used direct bounded preset commands and per-configuration
 CTest logs, not a new verifier snapshot/provenance claim. See [m2-evidence.md](m2-evidence.md).
-These results do not close native Windows, physical CUDA, model-quality, fit or
-performance gates. M1 exit remains blocked.
+Those historical host results did not establish native Windows or physical CUDA;
+the newer Windows evidence above is separate. Model quality, fit, performance and
+native Linux GPU qualification remain open. M1's both-OS exit remains blocked.
 
 ## Runtime model format decision (planned)
 
@@ -291,20 +301,23 @@ final online audit reverified 96 hashes; the eight probe paths remained 404.
 
 ## M1.1–M1.6 evidence and current boundary
 
-M1 source slices are implemented. Its full exit remains unqualified pending native
-Windows/MSVC and physical original-RTX-4080 CUDA evidence on both operating systems.
-M2 host-testable implementation is now authorized and is tracked in
-[m2-evidence.md](m2-evidence.md); this does not authorize M3+ inference integration.
-See [m1-evidence.md](m1-evidence.md) and [linux-build.md](linux-build.md) for M1
-evidence and workflow. Host results do not qualify native Windows, x86_64 Linux,
-CUDA, model support, or performance.
+M1 source slices are implemented. Native Windows Ninja/MSVC Debug/Release,
+packaging and physical original-4080 CUDA smoke passed; see
+[Windows / RTX 4080 evidence](windows-4080-evidence.md). Its full both-OS exit
+remains unqualified pending native Linux original-4080 CUDA evidence.
+M2 host-testable implementation is tracked in [m2-evidence.md](m2-evidence.md);
+this does not authorize M3+ inference integration. See [m1-evidence.md](m1-evidence.md)
+and [linux-build.md](linux-build.md) for historical M1 evidence and the Linux
+workflow. Neither these host tests nor the small GPU smoke qualify model support,
+production backend fences, fit or performance.
 
 ## Blocking gates and next work
 
-1. **M0.1 / M1.6:** obtain physical original-4080 CUDA build/device-link/run
-   evidence and exact hardware/toolchain/environment data on native Windows and
-   Linux. OrbStack ARM64 host evidence is not a CUDA run; neither OS's result can
-   stand in for the other.
+1. **M0.1 / M1.6:** retain the completed native Windows original-4080 evidence
+   and obtain the separate physical CUDA build/device-link/run and environment
+   evidence on native Linux. Complete reference-run power/load conditions when
+   reference work is authorized. OrbStack ARM64 host evidence is not a CUDA run;
+   neither OS's result can stand in for the other.
 2. **M0.2 / M0.5:** build and run the pinned 4080 reference; record actual phase/site
    precision, rounding, sampling/head/KV/graph settings and any A16 patch hash.
    Freeze mandatory matched cases/OS scope before tuning; no current suite is

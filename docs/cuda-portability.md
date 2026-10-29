@@ -2,20 +2,22 @@
 
 ## Evidence status
 
-**Implemented source only: not compiled, device-linked, or run.** The development
-machine for this change is macOS without `nvcc` or a CUDA GPU. Neither Linux nor
-native Windows/MSVC CUDA evidence exists from this change. M1.6 remains blocked
-until real original-4080 builds and runs are retained for **both** operating
-systems. Host-only builds, source review, mocks, cross-compilation, and WSL cannot
-substitute for those runs.
+**Native Windows/MSVC compile, device-link and original-4080 run passed on
+29 October 2026:** all 19 required checks, CUDA 13.3.73 and MSVC 19.51.36248.0.
+Exact environment, logs and raw report are recorded in
+[Windows / RTX 4080 evidence](windows-4080-evidence.md). The original macOS
+source-only implementation history remains historical. Native Linux original-4080
+evidence is still missing, so M1.6's **both-OS** exit remains blocked. Host-only
+builds, source review, mocks, cross-compilation and WSL cannot replace that run.
 
 `tests/cuda/portability_smoke.cu` is a standalone CUDA Runtime executable. It does
 not load a model, import inference kernels, require external math/JSON libraries,
 benchmark throughput, or qualify serving readiness.
 
-This source has not been compiled or run as CUDA here. Host mock tests for the
-resource-owner layer are not CUDA qualification and do not exercise this `.cu`
-translation unit or a CUDA device. Source-level review is not a CUDA syntax check.
+Host mock tests for the resource-owner layer remain separate from the physical
+Windows probe; they do not exercise this `.cu` translation unit or a CUDA device.
+The passing probe qualifies only its named smoke paths, not inference, model fit,
+performance or serving readiness.
 
 ## What actually runs
 

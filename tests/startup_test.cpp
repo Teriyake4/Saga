@@ -232,7 +232,7 @@ struct Session final : runtime::IExecutionSession {
     ~Session() override {
         if (!drained) ++counts.bad_drain_order;
         ++counts.session_destroyed;
-        source.reset();
+        step_source.reset();
     }
     runtime::PendingStep prefill(runtime::PrefillRequest, runtime::ResourceLease resources) override {
         return pending(std::move(resources));
@@ -325,10 +325,10 @@ struct Session final : runtime::IExecutionSession {
             throw std::runtime_error("synthetic worker did not reach submission gate");
     }
     runtime::PendingStep pending(runtime::ResourceLease resources) {
-        source = std::make_unique<runtime::StepSource>(
+        step_source = std::make_unique<runtime::StepSource>(
             runtime::ResourceLease(LeaseBundle{std::move(resources), weight_lease}),
             runtime::StepResultBounds{1, std::nullopt});
-        return source->pending();
+        return step_source->pending();
     }
     void bind_candidate(const runtime::ExecutionPlan& plan) { candidate_lines = plan.candidate().unique_allocations(); }
     void runtime_destroyed_now() noexcept { runtime_destroyed = true; }
@@ -340,7 +340,7 @@ struct Session final : runtime::IExecutionSession {
     std::vector<memory::LedgerLine> candidate_lines;
     backend::ModelProgram copied_program;
 
-    std::unique_ptr<runtime::StepSource> source;
+    std::unique_ptr<runtime::StepSource> step_source;
     std::thread worker;
 };
 
@@ -918,7 +918,7 @@ void pending_consumer_retains_request_and_allocation() {
     auto& fake_runtime = dynamic_cast<Runtime&>(owner->runtime());
     runtime::OwningStepResult completed;
     completed.rows.push_back({1, {}, {}});
-    check(fake_runtime.session.source->succeed(std::move(completed)),
+    check(fake_runtime.session.step_source->succeed(std::move(completed)),
           "typed decode source settles physical work before teardown");
     check(pending.status() == runtime::CompletionStatus::success &&
           pending_copy.status() == runtime::CompletionStatus::success,

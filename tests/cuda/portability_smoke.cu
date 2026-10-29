@@ -345,7 +345,12 @@ void write_report(const Report& report) {
               << report.error.empty() << ",\"error\":" << json_string(report.error)
               << ",\"toolchain\":{\"nvcc_major\":" << __CUDACC_VER_MAJOR__
               << ",\"nvcc_minor\":" << __CUDACC_VER_MINOR__ << ",\"nvcc_build\":" << __CUDACC_VER_BUILD__
-              << ",\"cuda_headers_version\":" << CUDART_VERSION << ",\"cplusplus\":" << __cplusplus;
+              << ",\"cuda_headers_version\":" << CUDART_VERSION << ",\"cplusplus\":"
+#ifdef _MSVC_LANG
+              << _MSVC_LANG;
+#else
+              << __cplusplus;
+#endif
 #ifdef _MSC_VER
     std::cout << ",\"host_compiler\":\"MSVC\",\"host_compiler_version\":" << _MSC_FULL_VER;
 #elif defined(__clang__)

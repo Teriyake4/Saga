@@ -231,7 +231,7 @@ def main():
             result = subprocess.run([binary] + flags, capture_output=True, timeout=10, env=environment)
             check(result.returncode != 0 and json.loads(result.stderr)["event"] == "startup_failed", "invalid startup must fail")
         model_ini = directory / "single model \u6a21\u578b.ini"
-        model_ini.write_text('[model]\r\nmodel="weights/model.engine"\r\nalias=qwen3.8-27b-gsq3\r\nctx-size=4096\r\n', encoding="utf-8-sig")
+        model_ini.write_bytes('[model]\r\nmodel="weights/model.engine"\r\nalias=qwen3.8-27b-gsq3\r\nctx-size=4096\r\n'.encode("utf-8-sig"))
         checked_model = subprocess.run([binary, "--model-config", str(model_ini), "--check-config"],
                                        capture_output=True, timeout=10, env=environment)
         check(checked_model.returncode == 0 and b"NOT validated" in checked_model.stdout,

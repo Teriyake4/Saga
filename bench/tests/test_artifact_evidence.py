@@ -1,14 +1,21 @@
 """Opt-in artifact evidence tests using temporary local files only."""
 
 import builtins
+import errno
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import tempfile
 import unittest
 from unittest import mock
 from pathlib import Path
+
+def _symlink_unavailable(error):
+    return (error.errno in (errno.EACCES, errno.EPERM, errno.ENOSYS, errno.ENOTSUP)
+            or getattr(error, "winerror", None) == 1314)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("verify_sources", ROOT / "tools/verify_sources.py")
@@ -120,15 +127,22 @@ class ArtifactEvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verifier.safe_artifact_path("nested\\file")
 
-    def test_symlink_escape_and_nonregular(self):
+    def test_symlink_escape(self):
         outside = self.root.parent / (self.root.name + "-outside")
         outside.write_bytes(self.body)
         try:
             self.path.unlink()
-            self.path.symlink_to(outside)
+            try:
+                self.path.symlink_to(outside)
+            except (OSError, NotImplementedError) as error:
+                if isinstance(error, NotImplementedError) or _symlink_unavailable(error):
+                    self.skipTest(f"symlinks unavailable: {error}")
+                raise
             self.assertNotEqual(self.check()["status"], "matched")
         finally:
             outside.unlink(missing_ok=True)
+
+    def test_directory_is_nonregular(self):
         self.path.unlink()
         self.path.mkdir()
         self.assertNotEqual(self.check()["status"], "matched")
@@ -140,21 +154,30 @@ class ArtifactEvidenceTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertNotIn("artifacts", report)
 
-    def test_parent_symlink_escape_and_fifo(self):
+    def test_parent_symlink_escape(self):
         outside = self.root.parent / (self.root.name + "-parent")
         outside.mkdir()
-        (outside / "file").write_bytes(self.body)
-        link_parent = self.root / "example" / "linked"
-        link_parent.symlink_to(outside, target_is_directory=True)
-        escaped = dict(self.item, path="linked/file")
-        self.assertNotEqual(verifier.verify_artifact_file(self.root, self.artifact, escaped)["status"], "matched")
-        if hasattr(__import__("os"), "mkfifo"):
-            import os
-            fifo = self.root / "example" / "fifo"
-            os.mkfifo(fifo)
-            self.assertNotEqual(verifier.verify_artifact_file(
-                self.root, self.artifact, dict(self.item, path="fifo"))["status"], "matched")
-        shutil.rmtree(outside)
+        try:
+            (outside / "file").write_bytes(self.body)
+            link_parent = self.root / "example" / "linked"
+            try:
+                link_parent.symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError) as error:
+                if isinstance(error, NotImplementedError) or _symlink_unavailable(error):
+                    self.skipTest(f"symlinks unavailable: {error}")
+                raise
+            escaped = dict(self.item, path="linked/file")
+            self.assertNotEqual(
+                verifier.verify_artifact_file(self.root, self.artifact, escaped)["status"], "matched")
+        finally:
+            shutil.rmtree(outside)
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "FIFO creation is unavailable")
+    def test_fifo_is_nonregular(self):
+        fifo = self.root / "example" / "fifo"
+        os.mkfifo(fifo)
+        self.assertNotEqual(verifier.verify_artifact_file(
+            self.root, self.artifact, dict(self.item, path="fifo"))["status"], "matched")
 
     def test_evidence_rows_require_shape_and_success_final_url(self):
         row = {"id": "one", "url": "https://example.invalid/source", "http_status": 200,

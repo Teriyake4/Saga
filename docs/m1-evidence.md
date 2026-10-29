@@ -1,6 +1,13 @@
 # M1.1–M1.6 implementation and evidence
 
-Snapshot: **28 October 2026**. M1 source slices and Linux host development/testing
+> **Windows update, 29 October 2026:** native Ninja/MSVC Debug and Release each
+> passed 26/26 CTest groups with image decoding ON, installed-package checks
+> passed, and the physical original-4080 CUDA compile/device-link/run passed all
+> 19 checks. See [the current Windows evidence](windows-4080-evidence.md). Native
+> Linux original-4080, VS2022-generator and hosted-CI results remain unestablished;
+> M0/M1 full gates are not closed. The snapshot and next steps below are historical.
+
+Historical snapshot: **28 October 2026**. M1 source slices and Linux host development/testing
 are authorized; Luna implementation and independent review/fix/re-review were used
 for source steps. Native Windows/4080 evidence remains pending. This is an evidence
 record, not M1 exit qualification. No M2/M3/M4+ implementation or integration is

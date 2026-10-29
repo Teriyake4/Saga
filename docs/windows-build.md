@@ -1,11 +1,16 @@
 # Native Windows build and evidence
 
+Native Windows Ninja/MSVC Debug/Release, product packaging and the physical RTX
+4080 CUDA smoke passed on 29 October 2026. See
+[Windows / RTX 4080 evidence](windows-4080-evidence.md) for exact versions, retained
+logs and limitations; this is not a hosted-CI or both-OS qualification claim.
+
 ## Host builds
 
 The retained `windows-msvc-debug` and `windows-msvc-release` presets use the
 Visual Studio 17 2022 generator and dynamic CRT. Windows Ninja alternatives are
 `windows-ninja-debug` and `windows-ninja-release`; both require CMake >=3.28,
-Ninja installed and on `PATH`, Visual Studio 2022 C++ build tools, the Windows
+Ninja installed and on `PATH`, a compatible MSVC C++ toolset, the Windows
 SDK, and an x64 Visual Studio developer PowerShell prompt that exposes `cl.exe`
 and the MSVC development environment. The presets explicitly select `cl.exe`;
 Ninja does not itself provide a compiler. These paths are Windows-only and do not
@@ -53,7 +58,12 @@ From a native x64 Visual Studio developer PowerShell prompt:
 
 The script accepts `-SourceRoot`, `-BuildRoot`, `-Configuration`, and
 `-ConfigurePreset`. By default the preset follows the chosen Debug/Release
-configuration. It pushes the source root before invoking CMake so preset
+configuration. An explicit Ninja preset can use the installed compatible MSVC
+version without requiring the VS2022 generator (the recorded native runs used
+VS Build Tools 2026). After configure, the script rejects disabled/missing host
+tests and mismatched single-config build types; multi-config generators must
+contain the requested configuration. Product-only presets require their separate
+build/install procedure, not this host verifier. It pushes the source root before invoking CMake so preset
 lookup works from any caller directory, and restores the original directory on
 exit. It records command lines, native process exit codes, OS/PowerShell/tool
 locations, selected Visual Studio/SDK facts and selected CMake cache fields

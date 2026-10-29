@@ -1,0 +1,6 @@
+# Byte-pinned inputs must retain their original line endings on every platform.
+/third_party/*/*.h -text
+/third_party/*/*.hpp -text
+/third_party/*/LICENSE -text
+/third_party/patches/*.patch -text
+/bench/reference/licenses/*.LICENSE -text

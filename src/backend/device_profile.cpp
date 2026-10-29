@@ -55,8 +55,8 @@ DeviceProfile::DeviceProfile(DeviceProfileSpec spec)
         (kind_ != DeviceKind::accelerator ||
          (product_identity_ != rtx4080_product_name && product_identity_ != rtx4080_product_alias) ||
          physical_device_identity_.empty() || physical_device_identity_ == product_identity_ ||
-         architecture_ != "sm89" || architecture_version_ != 89 || warp_size_ != 32 ||
-         multiprocessor_count_ != 76)) {
+         architecture_ != "sm89" || architecture_version_ != 89u || warp_size_ != 32u ||
+         multiprocessor_count_ != 76u)) {
         throw std::invalid_argument(
             "reserved RTX 4080 profile identity requires accepted product identity, physical device identity, "
             "accelerator, SM89/version 89, warp size 32, and 76 SMs");

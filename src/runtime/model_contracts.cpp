@@ -4,6 +4,7 @@
 #include <array>
 #include <initializer_list>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>

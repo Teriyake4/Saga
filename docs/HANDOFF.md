@@ -1,6 +1,14 @@
 # Saga continuation handoff
 
-Updated: **28 October 2026**. Start with `docs/status.md`, this file, and
+> **Windows follow-up, 29 October 2026:** native Windows Ninja/MSVC Debug and
+> Release passed 26/26 CTest groups each; product install/config checks and all 19
+> physical original-4080 CUDA smoke checks passed. Windows-specific fixes and
+> retained evidence are in `docs/windows-4080-evidence.md`. The Windows-pending
+> statements and Windows next action below describe the historical 28 October
+> handoff, not the latest result. Linux physical-CUDA and M0 model/reference/
+> quality gates remain open. No M3+ implementation was added.
+
+Historical handoff: **28 October 2026**. Start with `docs/status.md`, this file, and
 `docs/m2-evidence.md`; consult `IMPLEMENTATION_PLAN.md` and `PROPOSAL.md` for
 requirements and complete release scope.
 
