@@ -2,10 +2,12 @@
 
 #include "saga/kv/catalog.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -124,6 +126,11 @@ using LaunchFunction = void (*)(const void* metadata, const LaunchContext&);
 class IKernelImplementation;
 class KernelRegistry;
 
+class KernelUnavailable : public std::runtime_error {
+public:
+    explicit KernelUnavailable(const std::string& message) : std::runtime_error(message) {}
+};
+
 class PreparedKernel {
 public:
     PreparedKernel(LaunchFunction entry, std::shared_ptr<const void> metadata,
@@ -191,9 +198,19 @@ struct ModelSpec {
     kv::Geometry main_attention;
     std::vector<LogicalWeightBinding> weights;
 };
+inline constexpr std::size_t maximum_program_alternatives = 8;
+inline constexpr std::size_t maximum_program_calls = 4096;
+
+// Explicit caller/model-provided ordered alternative; backend validates and binds it but
+// does not prove mathematical equivalence to the primary call list.
+struct ProgramAlternative {
+    std::string identity;
+    std::vector<KernelRequest> calls;
+};
 struct ModelProgram {
     Phase phase{Phase::decode};
     std::vector<KernelRequest> calls;
+    std::vector<ProgramAlternative> alternatives{};
 };
 
 } // namespace saga::backend

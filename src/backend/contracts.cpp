@@ -224,7 +224,7 @@ PreparedKernel KernelRegistry::resolve(const KernelRequest& request, const Devic
         else compatible.push_back(&entry);
     }
     if (compatible.empty())
-        throw std::runtime_error("missing compatible kernel: " + describe(request, device) + rejected.str());
+        throw KernelUnavailable("missing compatible kernel: " + describe(request, device) + rejected.str());
     const auto preference_rank = [preferences](const std::string& id) {
         if (!preferences) return std::size_t{0};
         const auto& ids = preferences->preferred_implementations;
@@ -239,7 +239,13 @@ PreparedKernel KernelRegistry::resolve(const KernelRequest& request, const Devic
     });
     const auto& chosen = *compatible.front();
     KernelPreparationContext context{device};
-    auto result = chosen.implementation->prepare(request, context);
+    PreparedKernel result = [&] {
+        try {
+            return chosen.implementation->prepare(request, context);
+        } catch (const KernelUnavailable& error) {
+            throw std::runtime_error("kernel preparation failed for " + chosen.descriptor.id + ": " + error.what());
+        }
+    }();
     if (result.bindings() != request || result.workspace() != chosen.descriptor.workspace)
         throw std::runtime_error("prepared kernel changed binding/workspace contract: " + chosen.descriptor.id);
     result.implementation_id_ = chosen.descriptor.id;
