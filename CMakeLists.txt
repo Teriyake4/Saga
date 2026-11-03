@@ -130,6 +130,11 @@ if(SAGA_ENABLE_CUDA)
     set_target_properties(saga_cuda_projection_test PROPERTIES
       CUDA_ARCHITECTURES 89 CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON CUDA_EXTENSIONS OFF
       CUDA_SEPARABLE_COMPILATION ON CUDA_RESOLVE_DEVICE_SYMBOLS ON CUDA_RUNTIME_LIBRARY Shared)
+    add_executable(saga_cuda_session_test_device tests/cuda/session_test.cu)
+    target_link_libraries(saga_cuda_session_test_device PRIVATE saga_cuda saga_dependencies CUDA::cudart)
+    set_target_properties(saga_cuda_session_test_device PROPERTIES
+      CUDA_ARCHITECTURES 89 CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON CUDA_EXTENSIONS OFF
+      CUDA_SEPARABLE_COMPILATION ON CUDA_RESOLVE_DEVICE_SYMBOLS ON CUDA_RUNTIME_LIBRARY Shared)
   endif()
 endif()
 
