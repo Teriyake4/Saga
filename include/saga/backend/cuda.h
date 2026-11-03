@@ -5,6 +5,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <chrono>
+#include <optional>
 #include <memory>
 #include <span>
 #include <string>
@@ -75,14 +77,32 @@ private:
 // The executor is single-thread-affine. launch() success means submitted, not physically complete;
 // operand leases remain retained until synchronize()/a later fence. Every Buffer passed here is a
 // whole allocation view: its full address/byte range must belong to this executor. Copies and timing
-// calls fence before returning. Span copy sources/destinations must remain valid until return. A
-// failed physical fence terminates rather than releasing potentially in-flight memory.
+// calls fence before returning. Span copy sources/destinations must remain valid until return; if
+// their borrowed memory may still be accessed after a failed fence, the process fails closed. Failed
+// bounded fences poison the executor; in-flight buffer owners are quarantined and work is rejected.
+struct FenceFailureReport {
+    std::string reason;
+    std::uint64_t unreclaimed_bytes{};
+    std::uint64_t unreclaimed_allocations{};
+};
+class FenceFailure final : public std::runtime_error {
+public:
+    explicit FenceFailure(const std::string& message) : std::runtime_error(message) {}
+};
+struct ExecutorOptions {
+    std::chrono::milliseconds fence_timeout{std::chrono::seconds(30)};
+};
+
+// A failed bounded physical fence poisons the executor rather than releasing potentially in-flight memory.
 class Executor final {
 public:
     explicit Executor(int device_ordinal = 0);
+    Executor(int device_ordinal, ExecutorOptions options);
     ~Executor() noexcept;
     Executor(Executor&&) noexcept;
     Executor& operator=(Executor&&) noexcept;
+    // A moved-from executor supports only destruction/reassignment plus healthy(), drain(),
+    // and failure_report(); other operational methods require an owning executor.
     Executor(const Executor&) = delete;
     Executor& operator=(const Executor&) = delete;
     const DeviceInfo& device() const noexcept;
@@ -99,6 +119,9 @@ public:
     void launch(const PreparedKernel&, const ProjectionRequest&, const Buffer& weights,
                 const Buffer& activations, const Buffer& output);
     void synchronize();
+    bool drain() noexcept;
+    bool healthy() const noexcept;
+    std::optional<FenceFailureReport> failure_report() const;
     float time_launch(const PreparedKernel&, const ProjectionRequest&, const Buffer& weights,
                       const Buffer& activations, const Buffer& output, std::uint32_t repetitions);
     std::uint64_t observe_runtime_overhead() const;

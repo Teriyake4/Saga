@@ -141,6 +141,13 @@ if(SAGA_BUILD_TESTS)
   target_link_libraries(saga_cuda_resource_owners_test PRIVATE saga_build_options)
   add_test(NAME cuda_resource_owners COMMAND saga_cuda_resource_owners_test)
   set_tests_properties(cuda_resource_owners PROPERTIES TIMEOUT 45)
+  # Compile the actual executor against an isolated fake CUDA ABI; this is host-only coverage.
+  add_executable(saga_cuda_executor_test tests/cuda_executor_test.cpp src/backends/cuda/resources.cpp
+    tests/cuda/executor_fake_runtime/runtime.cpp)
+  target_include_directories(saga_cuda_executor_test BEFORE PRIVATE tests/cuda/executor_fake_runtime)
+  target_link_libraries(saga_cuda_executor_test PRIVATE saga_foundation)
+  add_test(NAME cuda_executor COMMAND saga_cuda_executor_test)
+  set_tests_properties(cuda_executor PROPERTIES TIMEOUT 45)
   foreach(name contracts memory resource_planner platform platform_process config model_config completion execution_worker sequence_slots admission output_buffer runtime_integration model_contracts)
     add_executable(saga_${name}_test tests/${name}_test.cpp)
     if(name STREQUAL "config" OR name STREQUAL "model_config")
