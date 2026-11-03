@@ -40,7 +40,8 @@ struct Counts {
     int allocations{}, warmups{}, captures{}, borrowed_description_copies{};
     bool fail_after_allocation{};
     bool runtime_factory_throws{}, backend_throws{}, capture_fails{}, omit_measurements{};
-    bool exceed_overhead{}, drop_persistent_owner{};
+    bool exceed_overhead{}, drop_persistent_owner{}, unproven_drain{};
+    int overhead_calls{};
     int warmup_mode{};
     bool scaled_resource{}, substitute_artifact{}, invalid_state{}, resource_graph_mismatch{};
     bool facts_workspace_present{true};
@@ -292,6 +293,7 @@ struct Session final : runtime::IExecutionSession {
     std::vector<std::pair<std::string, std::uint64_t>> overhead_measurements(
         memory::BringupGrant& grant) override {
         (void)grant;
+        ++counts.overhead_calls;
         std::vector<std::pair<std::string, std::uint64_t>> all;
         if (counts.drop_persistent_owner) { leases.clear(); weight_lease = {}; }
         if (counts.omit_measurements) return all;
@@ -306,6 +308,7 @@ struct Session final : runtime::IExecutionSession {
         ++counts.drain_calls;
         drained = true;
     }
+    bool physically_settled() const noexcept override { return !counts.unproven_drain; }
     void launch_gated_work(std::shared_ptr<runtime::CompletionSource> completion, int mode) {
         worker = std::thread([this, completion = std::move(completion), mode] {
             {
@@ -530,6 +533,15 @@ void construction_failure_unwinds_and_drains() {
 }
 
 void startup_failure_matrix() {
+    {
+        Fixture f;
+        f.counts.unproven_drain = true;
+        throws<std::runtime_error>([&] { (void)f.coordinator->start(*f.request); },
+            "an unproven physical drain cannot receive readiness approval");
+        check(f.counts.overhead_calls == 0, "unproven drain fails before overhead/reconciliation");
+        check(f.counts.runtime_destroyed == 1 && f.counts.session_destroyed == 1,
+            "failed startup destroys wrappers after backend drain handling");
+    }
     for (const int mode : {1, 2, 4, 5}) {
         Fixture f;
         f.counts.warmup_mode = mode;

@@ -298,6 +298,8 @@ ApprovedRuntime StartupCoordinator::start(const StartupRequest& request) const {
             }
             // Settle all submitted startup work before taking final high-water observations.
             session->drain();
+            if (!session->physically_settled())
+                throw std::runtime_error("startup physical drain failed; backend resources are quarantined");
             for (const auto& [id, bytes] : session->overhead_measurements(grant)) grant.observe_overhead(id, bytes);
             auto approval = std::move(grant).reconcile().approve();
             return ApprovedRuntime(std::move(model), std::move(backend), std::move(session),

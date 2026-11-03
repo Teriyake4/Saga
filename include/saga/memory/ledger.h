@@ -39,12 +39,14 @@ struct AllocationRecord {
     // External/runtime and graph terms always need an explicit enforced bound, even if estimated.
     std::optional<std::uint64_t> overhead_bound;
     std::string sharing_identity; // empty = unique; nonempty = identical physical backing, not a hint
+    bool operator==(const AllocationRecord&) const = default;
 };
 
 struct LedgerLine {
     AllocationRecord allocation;
     std::optional<std::uint64_t> padded_bytes;
     std::optional<std::uint64_t> bringup_cap;
+    bool operator==(const LedgerLine&) const = default;
 };
 
 class BringupGrant;
@@ -187,6 +189,9 @@ public:
     // Returns immutable-by-copy project allocation metadata for a canonical ID or alias.
     // Rejects unknown IDs, external terms, and moved/failed/reconciled grant state.
     AllocationRecord allocation_contract(const std::string& id) const;
+    // Exact candidate metadata and alias mapping, not merely a caller-chosen profile label.
+    // Rejects moved, failed or reconciled grants just like allocation_contract().
+    bool matches(const StaticCandidate&) const;
     // Reserve before invoking factory. It must never allocate more than the supplied cap and
     // must report real padded bytes, not payload bytes. Exceptions permanently fail this grant;
     // previous leases remain accounted until their last copy unwinds. Aliases share the same cap.

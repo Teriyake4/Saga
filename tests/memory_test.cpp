@@ -119,6 +119,19 @@ void candidate_tests() {
     check(candidate.has_unresolved_terms(), "unmeasured runtime overhead reported resolved");
     const auto totals = candidate.known_reserved_bytes();
     check(totals == DomainBytes{128, 64, 320}, "separate host/pinned/device domains");
+    {
+        auto exact = candidate.grant(budgets());
+        check(exact.matches(candidate), "grant must match its exact candidate");
+        check(!exact.matches(candidate.with_profile_identity("other-profile")),
+              "grant matching includes profile identity");
+        std::vector<AllocationRecord> changed;
+        for (const auto& line : candidate.unique_allocations()) changed.push_back(line.allocation);
+        changed.front().owner += "-changed";
+        StaticCandidate same_label(candidate.profile_identity(), candidate.graphs(), std::move(changed));
+        check(!exact.matches(same_label), "matching profile labels cannot hide altered allocation metadata");
+        exact.abort();
+        throws_with([&] { (void)exact.matches(candidate); }, "failed");
+    }
     auto limits = budgets();
     limits[2] = {1000, 383, 64};
     throws_with([&] { candidate.grant(limits); }, "budget/availability minus headroom");
@@ -220,6 +233,11 @@ void sharing_tests() {
     check(StaticCandidate("not-shared", GraphMode::disabled, {text, unique, overhead()}).known_reserved_bytes()[2] == 576,
           "empty sharing identity deduplicated unrelated storage");
     auto grant = shared.grant(budgets());
+    check(grant.matches(shared), "grant preserves the candidate alias mapping");
+    std::vector<AllocationRecord> no_alias_records;
+    for (const auto& line : shared.unique_allocations()) no_alias_records.push_back(line.allocation);
+    StaticCandidate no_alias(shared.profile_identity(), shared.graphs(), std::move(no_alias_records));
+    check(!grant.matches(no_alias), "same unique allocations cannot hide removed aliases");
     const auto alias_contract = grant.allocation_contract("draft-embedding");
     check(alias_contract.id == "embedding" && alias_contract.location == Location::device &&
           alias_contract.alignment == text.alignment && alias_contract.source == AllocationSource::project,

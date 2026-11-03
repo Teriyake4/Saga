@@ -1,27 +1,105 @@
-# CUDA BF16 projection substrate (M2.8 bounded increment)
+# CUDA projection substrate and backend/session adapter
 
-This increment provides a CUDA-runtime-backed, low-level BF16 matrix projection substrate. It does not provide a model runtime or establish support for Qwen, GSQ3, attention/KV, prefill/decode algorithms, MTP, graphs, or production quality/performance. The source is intentionally not an `IGpuBackend`: a model-specific backend must construct a truthful finite `ModelProgram`, allocate every declared resource from the exact startup grant, map model inputs/state to prepared kernel bindings, and implement the physical completion/lifecycle requirements of `IExecutionSession`. A projection fixture is not a serving session.
+The implementation tracked by [CUDA-01 / #16](https://github.com/Teriyake4/Saga/issues/16)
+connects the CUDA executor to `IGpuBackend`, `IExecutionSession` and startup
+planning. It is deliberately **not automatically registered** in the server.
+The available device math is still BF16 projection only, not a model runtime,
+Q3/Q4 execution, attention/KV, GDN, MTP, graph execution or HTTP generation.
+Implementation and host tests do not establish native CUDA qualification.
 
-## Contract and dispatch
+## Startup binding
 
-`include/saga/backend/cuda.h` is CUDA-header-neutral. `register_bf16_projection_kernels()` registers baseline and WMMA implementations for each of the three phase labels, with phase-specific registry IDs such as `sm89.bf16_projection.baseline.decode` and `sm89.bf16_projection.wmma.decode`. These labels only permit the same stateless matrix multiplication in those phase slots; they do not make either implementation a prefill, decode, or verify algorithm. Both implement `Y[T,N] = X[T,K] * W[N,K]^T`, with BF16 inputs and FP32 accumulation/output, no intermediate rounding, contiguous row-major logical matrices, and explicit byte strides. The prepared entry is nonvirtual and its metadata contains only copied request values and the implementation choice; preparation does not hold buffer addresses or allocate device memory.
+`include/saga/backend/cuda_session.h` provides `CudaBackend` and a startup-only
+`SessionBinder`. The binder receives the immutable selected plan and a resource
+table containing canonical granted allocation IDs. It returns owning metadata
+and prepared warmup/prefill/decode callbacks; absent or incompatible callbacks
+fail before use. Borrowed plan/resource-table references must not escape the
+binder. Bringup-buffer copies must not be retained by callbacks.
 
-The baseline supports tails and arbitrary positive dimensions within descriptor limits. The WMMA candidate is deliberately narrower: N/K/T multiples of 16 and row strides multiple of 32 bytes for BF16 matrices and 64 bytes for FP32 output. Registry descriptors also guard SM89/version 89, exact dtypes/layout/numerics, and phase. Actual buffer byte extents, pointer alignment/domain/current device, input/output overlap, and arithmetic/address-range overflow are checked again immediately before launch. WMMA is compiled only for SM89 or newer device code; the product target must include `CUDA_ARCHITECTURES 89` and CUDA toolkit 12.8 or newer as required by the project.
+Callbacks receive a noncopyable, nonmovable `SessionExecution` capability, valid
+only on the owner thread during the callback. It exposes checked copies,
+synchronization and launches of the exact startup-selected preparations; it has
+no allocation, registry or raw executor access. Copies of a selected
+`PreparedKernel` retain preparation identity; resolving another same-named
+kernel does not authorize it. There is no token-loop registry resolution or
+kernel ranking. Model-specific equations and request-to-tensor mapping belong
+to the eventual model implementation, not this adapter.
 
-`Buffer` is opaque: callers can inspect address/extent/domain and create only checked subviews, but cannot replace its lease, owner token, or backing address. Its requested view must remain inside the actual allocation registered by the creating executor; this applies to both the whole view and every offset/range operation. The backing's own lifetime token (not just a `Buffer` handle) drives executor allocation tracking. The executor enforces device/domain and executor ownership, but it cannot inspect `BringupGrant`'s private planned `Location`; matching the ledger record's domain/lifetime/size to the requested `BufferDomain` remains the caller's responsibility. Copies and timing calls fence before returning; span host memory must remain valid until the copy returns. `launch()` success means submission only, not physical completion; operand buffers are retained until `synchronize()` or another successful fence. Timing failures after any enqueued repetition attempt a stream fence before propagating; inability to prove that fence terminates while retaining owners. Executor use is single-thread-affine.
+The backend permits one live session, including state retained by step consumers.
+Except for `request_cancel()`, callers externally serialize all lifecycle,
+execution, health/report and teardown operations on the creating thread. Steps
+are currently synchronous: returned success proves physical settlement, not
+merely submission. Caller leases, request data and session resources remain
+retained by pending-result consumers after settlement. This is not a generation
+scheduler or a claim of prefill/decode model semantics.
 
-## Ledger use
+`request_cancel()` is a cross-thread stop request for the active step. Requests
+while idle are ignored. Cancellation recorded before terminal publication wins;
+callbacks can observe the stop token, but cancellation settles only after a
+physical fence. Stop callbacks run without the cancellation mutex held. Graph
+capture and verify are unsupported and fail explicitly.
 
-Callers must describe project allocations and an explicit runtime-overhead term in a `memory::StaticCandidate`, grant the exact candidate, and pass that grant to `Executor::allocate()`. The factory reports the actual allocation extent and transfers a unique owner to the ledger; the returned buffer carries an allocation lease. Caller-provided `Location`/lifetime/size/alignment records must match the chosen buffer domain and requested extents. Reconciliation requires every declared project allocation to be measured and exactly sized, all persistent owners retained, overhead observed within its configured bound, selected-profile warmup, and a successful physical drain. `observe_runtime_overhead()` reports the current CUDA memory-use delta from executor construction after subtracting executor-tracked live device buffers. This is an observed residual, not exact attribution: allocator/context caches and unrelated processes may contribute, and it is not a fit prediction. Keep the profile's declared overhead allowance explicitly bounded and treat a miss as a bring-up failure. This substrate never creates readiness approval on behalf of a model backend.
+## Allocations and approval
 
-## Physical test and timing
+Instantiation checks the exact candidate metadata, aliases, identity and graph
+mode against the grant, and validates that the executor matches the selected
+device facts/profile. Unique project records are allocated once with their exact
+padded extents, locations and alignment. Zero-byte declarations are measured
+without physical allocation. The table uses canonical IDs, not alias spellings.
+Bringup resources are released after successful warmup and physical drain;
+persistent/execution resources stay with the session and consumers.
 
-`tests/cuda/projection_test.cu` is a real-device test/measurement harness. It uses separately packed baseline and WMMA fixtures (the baseline fixture has odd N/K/T dimensions and tails), independent host BF16-to-FP32 answers, padded row strides, WMMA tile-boundary fallback checks, whole-view/extent/alias rejection, wrong-thread rejection, transient host and pinned allocations, ledger reconciliation, and repeated CUDA-event timing. Its positional iteration count is bounded to 1..10000 (default 30); it performs five timing batches per implementation. JSON includes device/runtime identity, nvcc version, shape/phase/stride/alignment/iteration request details, implementation IDs, kernel registers/shared/local memory, binary/PTX versions, occupancy query results, reference error, event milliseconds per launch, and ledger report. It emits raw measurements only; no variant is declared the winner and the output explicitly says qualification is not claimed. A passing test is physical correctness evidence for this fixture only.
+An explicit bounded device runtime-overhead reservation is required. The
+executor's memory baseline is sampled **after context/device initialization but
+before its stream/events are created**. Device availability is reported at that
+same boundary: pre-existing context memory is already excluded from available
+memory, while subsequent stream/event/runtime growth is included in the observed
+residual. Do not combine this with a pre-context availability budget without
+separately reserving the excluded footprint. The residual subtracts tracked
+live device buffers and can include allocator caches or unrelated process
+activity; it is not exact driver attribution, a complete host-allocator audit,
+or a model-fit prediction.
 
-Run through the repository's bounded native-device evidence wrapper (not CTest):
+The coordinator remains the sole creator of startup approval, after warmup,
+physical settlement, overhead observation and reconciliation. A bringup grant
+alone never establishes readiness. The adapter does not turn on `/readyz` or
+claim a supported model. Unsupported/unknown resources and graph profiles fail
+closed rather than silently substituting a context, codec or execution path.
 
-```text
-python3 -B tools/m2_cuda.py --iterations 30 --timeout-seconds 1200
-```
+## Failed physical settlement
 
-The wrapper configures the platform CUDA preset, builds `saga_cuda_projection_test`, runs it, and validates its JSON report; see `docs/m2-device-testing.md` for platform-specific invocation details. Build integration must compile `projection.cu` for SM89, compile `resources.cpp` with CUDA runtime and driver headers/link settings (`CUDA::cudart` and `CUDA::cuda_driver`), and link the existing `saga_foundation` and available nlohmann JSON dependency for the test. No CUDA compilation, physical test, SM89 correctness, Windows/MSVC behavior, model support, or performance qualification is claimed until it is run and reviewed on the original RTX 4080 and target operating systems.
+`ExecutorOptions::fence_timeout` bounds polling of a recorded CUDA event (default
+30 seconds). CUDA API calls themselves are still subject to driver/OS behavior;
+the evidence runner separately bounds the entire process. Query/record errors,
+timeout or inability to select the device poison the executor. New work is
+rejected; there is no retry-until-success teardown or in-process device recovery.
+
+Potentially referenced buffers/ledger leases are retained in process-lifetime
+quarantine. A failed session fence retains its complete state, active request and
+caller lease too. `failure_report()` reports executor pending-allocation counts,
+bytes and reason; it is not a complete inventory of all additional session-owned
+host objects. `physically_settled()` is false after failure, preventing startup
+approval. Failed teardown must not release or reuse these owners.
+
+Span-based copy overloads borrow host storage. If their fence cannot be proved,
+the executor terminates the process before borrowed storage can unwind. Use
+owned `Buffer` copy overloads when recoverable quarantine is required. Buffer
+release errors that cannot safely be recovered also fail-stop. Quarantine is
+intentional retained ownership, not a successful free or a normal memory leak
+recovery mechanism. Process termination may be the only reclamation boundary.
+
+## Projection and validation scope
+
+`register_bf16_projection_kernels()` supplies baseline and WMMA SM89 candidates
+for `Y[T,N] = X[T,K] * W[N,K]^T`, with BF16 inputs and FP32 accumulation/output.
+Prefill/decode/verify suffixes are phase labels for this same stateless operation,
+not implementations of model phases. Baseline supports guarded tails; WMMA
+requires N/K/T multiples of 16 and its declared stride/alignment multiples.
+Actual extents, device/domain, ownership, overlap and arithmetic are checked at
+launch. Existing event timings use different fixtures and do not rank variants.
+
+`cuda_executor` and `cuda_session` CTests compile production executor/session
+sources against an isolated fake runtime. They are host contract tests, not CUDA
+execution. The separate physical projection and session targets use real CUDA;
+see [native device testing](m2-device-testing.md). Measured tuning belongs to
+[PERF-01 / #26](https://github.com/Teriyake4/Saga/issues/26), not this bridge.

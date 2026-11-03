@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <chrono>
 
 namespace saga::backend::cuda {
 namespace {
@@ -53,12 +54,39 @@ struct Backing {
 struct Executor::Impl {
     int ordinal{};
     cudaStream_t stream{};
-    cudaEvent_t start{}, stop{};
+    cudaEvent_t start{}, stop{}, fence_event{};
+    ExecutorOptions options;
+    std::optional<FenceFailureReport> failure;
     DeviceInfo info;
     std::thread::id owner{std::this_thread::get_id()};
     struct Registered { void* address; std::uint64_t bytes; BufferDomain domain; std::weak_ptr<BackingLife> life; };
     std::vector<Registered> allocations;
     std::vector<Buffer> pending_owners;
+    Impl* quarantine_next{};
+    inline static std::atomic<Impl*> quarantine_head{};
+    void quarantine() noexcept {
+        auto* head = quarantine_head.load(std::memory_order_relaxed);
+        do { quarantine_next = head; }
+        while (!quarantine_head.compare_exchange_weak(head, this, std::memory_order_release, std::memory_order_relaxed));
+    }
+    void record_failure(const char* reason) noexcept {
+        poisoned = true;
+        auto& report = *failure;
+        try { report.reason.assign(reason); } catch (...) {}
+        report.unreclaimed_bytes = 0;
+        report.unreclaimed_allocations = 0;
+        for (std::size_t i = 0; i < pending_owners.size(); ++i) {
+            const auto& buffer = pending_owners[i];
+            const auto* token = buffer.backing_lifetime_.get();
+            bool duplicate = false;
+            for (std::size_t j = 0; j < i; ++j)
+                if (pending_owners[j].backing_lifetime_.get() == token) { duplicate = true; break; }
+            if (duplicate) continue;
+            const auto bytes = buffer.ledger_bytes();
+            if (bytes <= UINT64_MAX - report.unreclaimed_bytes) report.unreclaimed_bytes += bytes;
+            ++report.unreclaimed_allocations;
+        }
+    }
     void require_owned(const Buffer& b, std::uint64_t offset, std::uint64_t bytes) const {
         if (!b.address() || offset > b.bytes() || bytes > b.bytes() - offset || !b.ledger_bytes())
             throw std::invalid_argument("buffer has no live ledger lease or its requested range is invalid");
@@ -79,7 +107,8 @@ struct Executor::Impl {
     }
     std::uint64_t runtime_baseline{};
     bool poisoned{};
-    explicit Impl(int device) : ordinal(device) {
+    explicit Impl(int device, ExecutorOptions opts) : ordinal(device), options(opts) {
+        if (options.fence_timeout.count() <= 0) throw std::invalid_argument("fence timeout must be positive");
         check(cudaSetDevice(ordinal), "cudaSetDevice");
         cudaDeviceProp prop{}; check(cudaGetDeviceProperties(&prop, ordinal), "cudaGetDeviceProperties");
         info.ordinal = ordinal;
@@ -98,52 +127,102 @@ struct Executor::Impl {
         info.facts.multiprocessor_count = prop.multiProcessorCount;
         std::size_t free_bytes{}, total_bytes{}; check(cudaMemGetInfo(&free_bytes, &total_bytes), "cudaMemGetInfo");
         info.facts.device_memory_budget_bytes = free_bytes;
+        runtime_baseline = total_bytes - free_bytes;
+        failure.emplace();
+        failure->reason.reserve(128);
         check(cudaDriverGetVersion(&info.driver_version), "cudaDriverGetVersion");
         check(cudaRuntimeGetVersion(&info.runtime_version), "cudaRuntimeGetVersion");
         try {
             check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
             check(cudaEventCreate(&start), "cudaEventCreate(start)");
             check(cudaEventCreate(&stop), "cudaEventCreate(stop)");
-            std::size_t free_after{}, total_after{};
-            check(cudaMemGetInfo(&free_after, &total_after), "cudaMemGetInfo(runtime baseline)");
-            runtime_baseline = total_bytes - free_after;
+            check(cudaEventCreate(&fence_event), "cudaEventCreate(fence)");
+
         } catch (...) {
-            if ((start || stop || stream) && cudaSetDevice(ordinal) != cudaSuccess) fail_stop();
+            if ((start || stop || fence_event || stream) && cudaSetDevice(ordinal) != cudaSuccess) fail_stop();
+            if (fence_event && cudaEventDestroy(fence_event) != cudaSuccess) fail_stop();
             if (start && cudaEventDestroy(start) != cudaSuccess) fail_stop();
             if (stop && cudaEventDestroy(stop) != cudaSuccess) fail_stop();
-            if (stream) {
-                if (cudaStreamSynchronize(stream) != cudaSuccess) fail_stop();
-                if (cudaStreamDestroy(stream) != cudaSuccess) fail_stop();
-            }
+            if (stream && cudaStreamDestroy(stream) != cudaSuccess) fail_stop();
             throw;
         }
     }
-    void current() const {
+    void current() {
         if (std::this_thread::get_id() != owner) throw std::logic_error("CUDA executor used from a non-owner thread");
-        if (poisoned) throw std::runtime_error("CUDA executor is poisoned after an unproven physical fence");
-        check(cudaSetDevice(ordinal), "cudaSetDevice");
+        if (poisoned) throw FenceFailure("CUDA executor is poisoned after a failed physical fence");
+        const auto result = cudaSetDevice(ordinal);
+        if (result != cudaSuccess) {
+            record_failure(cudaGetErrorString(result));
+            throw FenceFailure(failure->reason);
+        }
     }
     void fence() {
-        const auto e = cudaStreamSynchronize(stream);
-        if (e != cudaSuccess) { poisoned = true; fail_stop(); }
+        if (poisoned) throw FenceFailure("CUDA executor is poisoned after a failed physical fence");
+        const auto recorded = cudaEventRecord(fence_event, stream);
+        auto result = recorded;
+        const auto deadline = std::chrono::steady_clock::now() + options.fence_timeout;
+        bool timed_out = false;
+        if (result == cudaSuccess) {
+            for (;;) {
+                result = cudaEventQuery(fence_event);
+                if (result != cudaErrorNotReady) break;
+                if (std::chrono::steady_clock::now() >= deadline) { timed_out = true; break; }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+        if (result != cudaSuccess || timed_out) {
+            record_failure(recorded != cudaSuccess ? cudaGetErrorString(recorded) :
+                timed_out ? "fence event query timed out" : cudaGetErrorString(result));
+            throw FenceFailure(failure->reason);
+        }
         pending_owners.clear();
     }
     ~Impl() noexcept {
-        if (!stream) return;
-        if (cudaSetDevice(ordinal) != cudaSuccess || cudaStreamSynchronize(stream) != cudaSuccess) {
-            // std::terminate does not unwind members: ledger leases and CUDA owners remain intact.
-            fail_stop();
-        }
+        if (!stream || poisoned) return;
+        if (cudaSetDevice(ordinal) != cudaSuccess) return;
+        if (fence_event) (void)cudaEventDestroy(fence_event);
         if (start) (void)cudaEventDestroy(start);
         if (stop) (void)cudaEventDestroy(stop);
         (void)cudaStreamDestroy(stream);
     }
 };
-Executor::Executor(int ordinal) : impl_(std::make_unique<Impl>(ordinal)) {}
-Executor::~Executor() noexcept = default;
-Executor::Executor(Executor&&) noexcept = default;
-Executor& Executor::operator=(Executor&&) noexcept = default;
+Executor::Executor(int ordinal) : Executor(ordinal, ExecutorOptions{}) {}
+Executor::Executor(int ordinal, ExecutorOptions options) : impl_(std::make_unique<Impl>(ordinal, options)) {}
+Executor::~Executor() noexcept {
+    if (!impl_) return;
+    if (!impl_->poisoned) (void)drain();
+    if (impl_->poisoned) {
+        auto* abandoned = impl_.release();
+        abandoned->quarantine();
+    }
+}
+Executor::Executor(Executor&& other) noexcept : impl_(std::move(other.impl_)) {}
+Executor& Executor::operator=(Executor&& other) noexcept {
+    if (this != &other) {
+        if (impl_) {
+            if (!impl_->poisoned) (void)drain();
+            if (impl_->poisoned) {
+                auto* abandoned = impl_.release();
+                abandoned->quarantine();
+            }
+        }
+        impl_ = std::move(other.impl_);
+    }
+    return *this;
+}
 const DeviceInfo& Executor::device() const noexcept { return impl_->info; }
+bool Executor::drain() noexcept {
+    if (!impl_ || impl_->poisoned) return false;
+    try { impl_->current(); impl_->fence(); return true; }
+    catch (...) {
+        if (!impl_->poisoned) impl_->record_failure("drain failed before completion could be verified");
+        return false;
+    }
+}
+bool Executor::healthy() const noexcept { return impl_ && !impl_->poisoned; }
+std::optional<FenceFailureReport> Executor::failure_report() const {
+    return impl_ && impl_->poisoned ? impl_->failure : std::nullopt;
+}
 Buffer Executor::allocate(memory::BringupGrant& grant, const std::string& id, std::uint64_t reserve,
                           BufferDomain domain, std::uint64_t alignment) {
     const auto contract = grant.allocation_contract(id);
@@ -200,7 +279,11 @@ void Executor::copy_to_device(const Buffer& dst, std::uint64_t offset, std::span
     try {
         check(cudaMemcpyAsync(static_cast<std::byte*>(dst.address()) + offset, src.data(), src.size(), cudaMemcpyHostToDevice, impl_->stream), "cudaMemcpyAsync(H2D)");
         impl_->fence();
-    } catch (...) { impl_->fence(); throw; }
+    } catch (...) {
+        if (impl_->poisoned) fail_stop(); // borrowed host memory may still be read by the device
+        try { impl_->fence(); } catch (...) { fail_stop(); }
+        throw;
+    }
 }
 void Executor::copy_to_device(const Buffer& dst, std::uint64_t dst_offset, const Buffer& src,
                               std::uint64_t src_offset, std::uint64_t bytes) {
@@ -226,7 +309,11 @@ void Executor::copy_to_host(std::span<std::byte> dst, const Buffer& src, std::ui
     try {
         check(cudaMemcpyAsync(dst.data(), static_cast<const std::byte*>(src.address()) + offset, dst.size(), cudaMemcpyDeviceToHost, impl_->stream), "cudaMemcpyAsync(D2H)");
         impl_->fence();
-    } catch (...) { impl_->fence(); throw; }
+    } catch (...) {
+        if (impl_->poisoned) fail_stop(); // borrowed host destination may still be written by the device
+        try { impl_->fence(); } catch (...) { fail_stop(); }
+        throw;
+    }
 }
 void Executor::copy_to_host(const Buffer& dst, std::uint64_t dst_offset, const Buffer& src,
                             std::uint64_t src_offset, std::uint64_t bytes) {
@@ -271,8 +358,7 @@ float Executor::time_launch(const PreparedKernel& kernel, const ProjectionReques
         check(cudaEventRecord(impl_->start, impl_->stream), "cudaEventRecord(start)");
         for (std::uint32_t i = 0; i < reps; ++i) launch(kernel, req, w, x, y);
         check(cudaEventRecord(impl_->stop, impl_->stream), "cudaEventRecord(stop)");
-        check(cudaEventSynchronize(impl_->stop), "cudaEventSynchronize(timing)");
-        impl_->pending_owners.clear();
+        impl_->fence();
         float ms{}; check(cudaEventElapsedTime(&ms, impl_->start, impl_->stop), "cudaEventElapsedTime");
         return ms / reps;
     } catch (...) {

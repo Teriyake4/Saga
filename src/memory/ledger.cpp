@@ -224,6 +224,16 @@ BringupGrant::BringupGrant(const StaticCandidate& candidate, const Budgets& budg
 AllocationLease::AllocationLease(std::shared_ptr<detail::AllocationControl> control) : control_(std::move(control)) {}
 std::uint64_t AllocationLease::bytes() const noexcept { return control_ ? control_->bytes : 0; }
 
+bool BringupGrant::matches(const StaticCandidate& candidate) const {
+    auto& state = require_state(state_);
+    std::lock_guard lock(state.mutex);
+    require_open(state);
+    const auto& granted = state.candidate;
+    return candidate.valid_ && granted.profile_identity_ == candidate.profile_identity_ &&
+        granted.graphs_ == candidate.graphs_ && granted.lines_ == candidate.lines_ &&
+        granted.aliases_ == candidate.aliases_;
+}
+
 AllocationRecord BringupGrant::allocation_contract(const std::string& id) const {
     auto& state = require_state(state_);
     std::lock_guard lock(state.mutex);

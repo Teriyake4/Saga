@@ -142,7 +142,11 @@ int main(int argc, char** argv) try {
                     for(std::uint64_t p=0;p<fixture.request.shape.inputs;++p)
                         expected=std::fma(__bfloat162float(fixture.weights[col*fixture.request.strides.weight_row_bytes/2+p]),
                             __bfloat162float(fixture.activations[row*fixture.request.strides.activation_row_bytes/2+p]),expected);
-                    max_error=std::max(max_error,std::abs(actual[row*fixture.request.strides.output_row_bytes/4+col] - expected));
+                    const float observed=actual[row*fixture.request.strides.output_row_bytes/4+col];
+                    const float difference=std::abs(observed-expected);
+                    if(!std::isfinite(observed) || !std::isfinite(expected) || !std::isfinite(difference))
+                        throw std::runtime_error("projection output or host reference is non-finite");
+                    max_error=std::max(max_error,difference);
                 }
             if(max_error>0.02f) throw std::runtime_error("projection output differs from independent host reference");
             std::vector<float> ms; for(int rep=0;rep<5;++rep)
@@ -235,6 +239,11 @@ int main(int argc, char** argv) try {
           {"allocations",nlohmann::json::array()}}}};
     for(const auto& allocation:ledger_report.allocations) result["ledger"]["allocations"].push_back({
         {"id",allocation.id},{"cap_bytes",allocation.cap},{"live_bytes",allocation.live_bytes},
-        {"measured_peak_bytes",allocation.measured_peak},{"measured",allocation.measured}});
+        {"measured_peak_bytes",allocation.measured_peak},{"measured",allocation.measured},
+        {"location",allocation.id=="staging-host"?"host":allocation.id=="staging-pinned"?"pinned":"device"},
+        {"lifetime",allocation.id=="weights"||allocation.id=="input"||allocation.id=="output"?"persistent":"bringup"},
+        {"source",allocation.id=="runtime"?"runtime_overhead":"project"}});
+    result["ledger"]["live_bytes"]={{"host",ledger_report.live_bytes[0]},
+        {"pinned",ledger_report.live_bytes[1]},{"device",ledger_report.live_bytes[2]}};
     std::cout << result.dump() << '\n'; return 0;
 } catch(const std::exception& e) { std::cerr << "projection test failed: " << e.what() << '\n'; return 1; }

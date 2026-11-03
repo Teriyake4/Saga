@@ -167,14 +167,18 @@ public:
         return std::nullopt;
     }
     // Startup-only sessions may perform asynchronous physical preparation; successful
-    // completion is a physical-success proof, not merely logical settlement. drain() must
-    // block until all physical work is settled; if it cannot prove that fence, the backend must
-    // fail-stop rather than return and allow owners to unwind.
+    // completion is a physical-success proof, not merely logical settlement. If a bounded
+    // drain cannot prove a fence, the backend must quarantine every potentially referenced
+    // owner for process lifetime, reject new work, and report physically_settled() == false.
+    // Returning false never permits unsafe owners to unwind or establishes readiness.
     virtual Completion warmup(memory::BringupGrant&) = 0;
     virtual Completion capture(memory::BringupGrant&) = 0;
     virtual std::vector<std::pair<std::string, std::uint64_t>> overhead_measurements(memory::BringupGrant&) = 0;
-    // Blocking physical barrier. Must not return until all submitted work is physically settled.
+    // Blocking physical barrier, or bounded failure with all affected owners quarantined.
     virtual void drain() noexcept = 0;
+    // Legacy blocking sessions retain the original contract. Quarantining backends override
+    // this to prevent startup approval after an unproven physical fence.
+    virtual bool physically_settled() const noexcept { return true; }
 };
 class IModelRuntime {
 public:

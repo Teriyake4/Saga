@@ -200,7 +200,9 @@ def validate_report(report: Any, expected_iterations: int) -> None:
     require(device.get("architecture") == "sm89" and device.get("architecture_version") == 89,
             "device architecture is not SM89")
     identity = device.get("identity")
-    require(type(identity) is str and bool(identity), "device identity is missing")
+    require(type(identity) is str and len(identity) == 32
+            and all(character in "0123456789abcdef" for character in identity),
+            "device identity must be a 32-character lowercase hexadecimal UUID")
     for key in ("ordinal", "driver", "runtime"):
         require(type(device.get(key)) is int and device[key] >= (0 if key == "ordinal" else 1),
                 f"invalid device {key}")
@@ -216,8 +218,34 @@ def validate_report(report: Any, expected_iterations: int) -> None:
         require(type(variant) is dict, "malformed projection variant")
         variant = cast(dict[str, Any], variant)
         identity = variant.get("variant")
-        require(type(identity) is str and bool(identity), "variant ID is missing")
-        ids.append(cast(str, identity).lower())
+        require(type(identity) is str, "variant ID is missing")
+        ids.append(identity)
+        request = variant.get("request")
+        require(type(request) is dict, "missing projection request")
+        request = cast(dict[str, Any], request)
+        expected_request = {
+            "operation": "projection", "weights": "bf16", "activation": "bf16",
+            "output": "fp32", "numerics": "fp32_accumulate", "layout": "contiguous",
+            "phase": "decode",
+        }
+        require(all(request.get(key) == value for key, value in expected_request.items()),
+                "projection request contract mismatch")
+        base = identity == "sm89.bf16_projection.baseline.decode"
+        wmma = identity == "sm89.bf16_projection.wmma.decode"
+        require(base or wmma, "unexpected projection variant ID")
+        shape = (19, 23, 3) if base else (32, 32, 32)
+        strides = (48, 50, 80) if base else (96, 96, 192)
+        alignment = 2 if base else 32
+        integer_fields = ("outputs", "inputs", "tokens", "weight_row_stride_bytes",
+                          "activation_row_stride_bytes", "output_row_stride_bytes", "alignment")
+        require(all(type(request.get(key)) is int for key in integer_fields),
+                "projection request dimensions/strides/alignment must be integers")
+        require((request.get("outputs"), request.get("inputs"), request.get("tokens")) == shape,
+                "projection request shape mismatch")
+        require((request.get("weight_row_stride_bytes"), request.get("activation_row_stride_bytes"),
+                 request.get("output_row_stride_bytes")) == strides,
+                "projection request strides mismatch")
+        require(request.get("alignment") == alignment, "projection request alignment mismatch")
         error = variant.get("max_abs_error")
         require(finite_nonnegative(error), "invalid projection error")
         require(cast(Any, error) <= 0.02, "projection error exceeds 0.02")
@@ -236,20 +264,37 @@ def validate_report(report: Any, expected_iterations: int) -> None:
         timings = variant.get("event_ms_per_launch")
         require(type(timings) is list and len(timings) >= 5
                 and all(finite_nonnegative(item) for item in cast(list[Any], timings)), "invalid timing samples")
-    require(len(set(ids)) == 2 and sum("baseline" in item for item in ids) == 1
-            and sum("wmma" in item for item in ids) == 1, "missing baseline or WMMA variant IDs")
+    require(set(ids) == {"sm89.bf16_projection.baseline.decode", "sm89.bf16_projection.wmma.decode"},
+            "unexpected baseline/WMMA variant IDs")
     ledger = report.get("ledger")
     require(type(ledger) is dict, "missing ledger profile")
     ledger = cast(dict[str, Any], ledger)
     require(type(ledger.get("profile")) is str and bool(ledger["profile"]), "missing ledger profile")
     live = ledger.get("live_bytes")
-    require(type(live) is list and all(type(value) is int and value >= 0 for value in cast(list[Any], live)),
+    require(type(live) is dict and set(live) == {"host", "pinned", "device"}
+            and all(type(value) is int and value >= 0 for value in cast(dict[str, Any], live).values()),
             "invalid reconciled ledger live-byte totals")
     allocations = ledger.get("allocations")
     require(type(allocations) is list and bool(allocations), "missing ledger allocations")
+    expected_allocations = {
+        "weights": ("device", "persistent", "project"),
+        "input": ("device", "persistent", "project"),
+        "output": ("device", "persistent", "project"),
+        "staging-host": ("host", "bringup", "project"),
+        "staging-pinned": ("pinned", "bringup", "project"),
+        "runtime": ("device", "bringup", "runtime_overhead"),
+    }
+    observed: dict[str, dict[str, Any]] = {}
     for allocation in cast(list[Any], allocations):
         require(type(allocation) is dict, "malformed ledger allocation")
         allocation = cast(dict[str, Any], allocation)
+        allocation_id = allocation.get("id")
+        require(type(allocation_id) is str and allocation_id in expected_allocations
+                and allocation_id not in observed, "unexpected or duplicate ledger allocation ID")
+        observed[allocation_id] = allocation
+        require((allocation.get("location"), allocation.get("lifetime"), allocation.get("source"))
+                == expected_allocations[allocation_id], "allocation location/lifetime/source mismatch")
+        require(allocation.get("measured") is True, "allocation is not measured")
         cap, current, peak = (allocation.get("cap_bytes"), allocation.get("live_bytes"),
                               allocation.get("measured_peak_bytes"))
         require(type(cap) is int and cap >= 0, "invalid allocation cap")
@@ -257,7 +302,167 @@ def validate_report(report: Any, expected_iterations: int) -> None:
         require(type(current) is int and current >= 0, "invalid allocation live bytes")
         require(cast(int, current) <= cap_value, "allocation live bytes exceed cap")
         require(type(peak) is int and peak >= 0, "invalid allocation measured peak")
+        require(cast(int, current) <= cast(int, peak), "allocation live bytes exceed measured peak")
         require(cast(int, peak) <= cap_value, "allocation measured peak exceeds cap")
+    require(set(observed) == set(expected_allocations), "missing required ledger allocation")
+    expected_caps = {"weights": 3072, "input": 3072, "output": 6144,
+                     "staging-host": 3072, "staging-pinned": 4096, "runtime": 1 << 30}
+    for allocation_id, expected_cap in expected_caps.items():
+        require(observed[allocation_id]["cap_bytes"] == expected_cap,
+                f"allocation {allocation_id} cap does not match its declared reservation")
+    expected_peaks = {"weights": 3072, "input": 3072, "output": 6144,
+                      "staging-host": 3072, "staging-pinned": 4096}
+    for allocation_id, expected_peak in expected_peaks.items():
+        allocation = observed[allocation_id]
+        require(allocation["measured_peak_bytes"] == expected_peak,
+                f"allocation {allocation_id} measured peak does not match its padded request")
+        if allocation_id in ("weights", "input", "output"):
+            require(allocation["live_bytes"] == expected_peak,
+                    "persistent allocation must remain live at its exact padded size")
+        else:
+            require(allocation["live_bytes"] == 0,
+                    "staging allocation must be released after its measured peak")
+    runtime = observed["runtime"]
+    require(runtime["live_bytes"] == runtime["measured_peak_bytes"],
+            "runtime overhead live bytes must match its observed peak")
+    totals = {location: sum(item["live_bytes"] for item in observed.values()
+                            if item["location"] == location) for location in ("host", "pinned", "device")}
+    require(live == totals, "domain live-byte totals do not match allocation records")
+
+
+SESSION_CHECKS = {
+    "startup_selected_real_registered_bf16_decode_kernel",
+    "independent_scalar_reference_matches_all_logits",
+    "decode_returns_owned_bounded_logits",
+    "caller_lease_retained_until_pending_consumer_released",
+    "warmup_callback_failure_after_submit_drains_and_releases",
+    "decode_callback_failure_after_submit_drains_without_result",
+    "wrong_thread_rejected_before_work",
+    "post_submit_cancellation_physically_fenced",
+    "unselected_preparation_rejected_before_cuda_launch",
+    "binder_failure_before_submit",
+    "repeated_startup_after_healthy_teardown",
+}
+
+
+def validate_session_report(report: Any, expected_iterations: int) -> None:
+    require(type(report) is dict, "session runtime JSON must be an object")
+    report = cast(dict[str, Any], report)
+    require(report.get("status") == "physical_session_test_passed", "physical session test did not pass")
+    require(report.get("qualification") == "not_claimed", "session qualification must remain not_claimed")
+    require(report.get("serving_readiness") is False and report.get("readiness_approval") is False,
+            "session test must not claim serving readiness or approval")
+    require(report.get("ledger_reconciliation") == "passed", "session ledger reconciliation did not pass")
+    require(report.get("all_checks_passed") is True, "not all physical session checks passed")
+    require(report.get("device_loss_injection") == "not_run",
+            "device-loss injection must remain explicitly not_run")
+    require(report.get("projection_scope") == "synthetic_fixture_only"
+            and report.get("tuning_claim") is False,
+            "session report must identify fixture scope and make no tuning claim")
+    checks = report.get("checks")
+    expected_checks = report.get("expected_checks")
+    require(type(checks) is list and type(expected_checks) is list,
+            "physical session check sets are missing")
+    require(all(type(item) is str for item in checks + expected_checks), "malformed physical session check set")
+    require(set(checks) == SESSION_CHECKS and len(checks) == len(SESSION_CHECKS)
+            and set(expected_checks) == SESSION_CHECKS and len(expected_checks) == len(SESSION_CHECKS),
+            "physical session check set does not match required exercised coverage")
+    require(type(report.get("iterations")) is int and report["iterations"] == expected_iterations,
+            "session iteration count does not match the request")
+    device = report.get("device")
+    require(type(device) is dict, "session device identity is missing")
+    device = cast(dict[str, Any], device)
+    require(device.get("name") in ("NVIDIA GeForce RTX 4080", "GeForce RTX 4080"),
+            "session device is not an original GeForce RTX 4080")
+    require(device.get("architecture") == "sm89" and type(device.get("architecture_version")) is int
+            and device["architecture_version"] == 89, "session device architecture is not SM89")
+    identity = device.get("identity")
+    require(type(identity) is str and len(identity) == 32
+            and all(character in "0123456789abcdef" for character in identity),
+            "session device identity must be a 32-character lowercase hexadecimal UUID")
+    for key in ("ordinal", "driver", "runtime"):
+        require(type(device.get(key)) is int and device[key] >= (0 if key == "ordinal" else 1),
+                f"invalid session device {key}")
+    ledger = report.get("ledger")
+    require(type(ledger) is dict, "session ledger report is missing")
+    ledger = cast(dict[str, Any], ledger)
+    require(type(ledger.get("profile")) is str and bool(ledger["profile"]),
+            "session ledger profile is missing")
+    totals = ledger.get("live_bytes")
+    require(type(totals) is dict and set(totals) == {"host", "pinned", "device"}
+            and all(type(value) is int and value >= 0 for value in cast(dict[str, Any], totals).values()),
+            "invalid session domain live-byte totals")
+    allocations = ledger.get("allocations")
+    require(type(allocations) is list, "session allocation report is missing")
+    expected_meta: dict[str, tuple[str, str, str, int]] = {
+        "weights": ("device", "persistent", "project", 1024),
+        "activations": ("device", "persistent", "project", 256),
+        "output": ("device", "persistent", "project", 256),
+        "host-output": ("host", "persistent", "project", 256),
+        "staging-host": ("host", "bringup", "project", 256),
+        "staging-pinned": ("pinned", "bringup", "project", 4096),
+        "runtime": ("device", "bringup", "runtime_overhead", 1 << 30),
+        "main-kv": ("device", "persistent", "project", 64),
+        "warmup-scratch": ("device", "bringup", "project", 256),
+        "zero-1": ("device", "persistent", "project", 0),
+        "zero-2": ("device", "persistent", "project", 0),
+        "zero-3": ("device", "persistent", "project", 0),
+        "zero-4": ("device", "persistent", "project", 0),
+        "zero-5": ("device", "persistent", "project", 0),
+        "zero-7": ("host", "persistent", "project", 0),
+        "zero-9": ("device", "persistent", "project", 0),
+        "zero-10": ("device", "persistent", "project", 0),
+        "zero-13": ("host", "persistent", "project", 0),
+        "zero-15": ("pinned", "persistent", "project", 0),
+    }
+    observed: dict[str, dict[str, Any]] = {}
+    for value in allocations:
+        require(type(value) is dict, "malformed session allocation report")
+        allocation = cast(dict[str, Any], value)
+        allocation_id = allocation.get("id")
+        require(type(allocation_id) is str and allocation_id in expected_meta
+                and allocation_id not in observed, "unexpected or duplicate session allocation ID")
+        observed[allocation_id] = allocation
+        location, lifetime, source, expected_cap = expected_meta[allocation_id]
+        require((allocation.get("location"), allocation.get("lifetime"), allocation.get("source"))
+                == (location, lifetime, source), "session allocation metadata mismatch")
+        require(allocation.get("measured") is True, "session allocation is not measured")
+        cap, current, peak = (allocation.get("cap_bytes"), allocation.get("live_bytes"),
+                              allocation.get("measured_peak_bytes"))
+        require(type(cap) is int and cap == expected_cap,
+                f"session allocation {allocation_id} cap mismatch")
+        require(type(current) is int and current >= 0 and type(peak) is int and peak >= 0
+                and current <= peak <= cap, "invalid session allocation live/peak/cap bounds")
+    require(set(observed) == set(expected_meta), "session allocation set is incomplete")
+    for allocation_id, (_, lifetime, _, cap) in expected_meta.items():
+        allocation = observed[allocation_id]
+        if lifetime == "persistent" and cap:
+            require(allocation["live_bytes"] == cap and allocation["measured_peak_bytes"] == cap,
+                    f"persistent session allocation {allocation_id} is not live at its exact reservation")
+        elif allocation_id in ("staging-host", "staging-pinned", "warmup-scratch"):
+            require(allocation["live_bytes"] == 0 and allocation["measured_peak_bytes"] == cap,
+                    f"bringup allocation {allocation_id} was not released after its exact peak")
+    runtime = observed["runtime"]
+    require(runtime["live_bytes"] == runtime["measured_peak_bytes"],
+            "session runtime live bytes must equal the observed overhead")
+    domain_totals = {location: sum(item["live_bytes"] for item in observed.values()
+                                   if item["location"] == location)
+                     for location in ("host", "pinned", "device")}
+    require(totals == domain_totals, "session domain live-byte totals do not match allocation records")
+
+
+def validate_same_device(projection_report: Any, session_report: Any) -> None:
+    require(type(projection_report) is dict and type(session_report) is dict,
+            "combined evidence reports must both be objects")
+    projection_device = cast(dict[str, Any], projection_report).get("device")
+    session_device = cast(dict[str, Any], session_report).get("device")
+    require(type(projection_device) is dict and type(session_device) is dict,
+            "combined evidence device identity is missing")
+    projection_device = cast(dict[str, Any], projection_device)
+    session_device = cast(dict[str, Any], session_device)
+    for key in ("identity", "ordinal", "driver", "runtime"):
+        require(projection_device.get(key) == session_device.get(key),
+                f"projection and session evidence differ in device {key}")
 
 
 def safe_evidence_root(source: Path, build_root: Path) -> None:
@@ -280,6 +485,10 @@ def main() -> int:
     if sys.platform not in ("win32", "linux"):
         print("FAIL: native Windows or Linux required", file=sys.stderr)
         return 1
+    machine = platform.machine().lower()
+    if machine not in ("x86_64", "amd64"):
+        print("FAIL: native x86_64/AMD64 required for CUDA session evidence", file=sys.stderr)
+        return 1
     if args.iterations < 1 or args.iterations > 10000 or args.timeout_seconds < 1 or args.max_log_bytes < 1:
         parser.error("iterations must be in 1..10000; timeout and max-log-bytes must be positive")
     windows = sys.platform == "win32"
@@ -296,7 +505,7 @@ def main() -> int:
     binary = run_root / "binary"
     binary.mkdir(parents=True, exist_ok=False)
     data: dict[str, Any] = {
-        "schema_version": 1, "kind": "m2-native-cuda-projection-device-test",
+        "schema_version": 1, "kind": "m2-native-cuda-projection-and-session-device-tests",
         "qualification": False, "readiness_approval": False, "source_root": str(source),
         "run_root": str(run_root), "binary_root": str(binary), "preset": preset,
         "iterations": args.iterations, "timeout_seconds": args.timeout_seconds,
@@ -382,29 +591,47 @@ def main() -> int:
         facts_dir.mkdir()
         for fact in facts:
             shutil.copy2(fact, facts_dir / fact.name)
-        build = [tools["cmake"], "--build", str(binary), "--target", "saga_cuda_projection_test",
+        build = [tools["cmake"], "--build", str(binary), "--target",
+                 "saga_cuda_projection_test", "saga_cuda_session_test_device",
                  "--verbose", "--parallel", "2"]
         command("verbose-build", build)
-        executable = binary / ("saga_cuda_projection_test.exe" if windows else "saga_cuda_projection_test")
-        if not executable.is_file():
-            raise RuntimeError(f"CUDA projection test executable missing: {executable}")
-        digest = hashlib.sha256()
-        with executable.open("rb") as stream:
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(block)
-        data["binary"] = {"path": str(executable), "size_bytes": executable.stat().st_size,
-                          "sha256": digest.hexdigest()}
+        suffix = ".exe" if windows else ""
+        projection_executable = binary / f"saga_cuda_projection_test{suffix}"
+        session_executable = binary / f"saga_cuda_session_test_device{suffix}"
+        for label, executable in (("projection", projection_executable), ("session", session_executable)):
+            if not executable.is_file():
+                raise RuntimeError(f"CUDA {label} test executable missing: {executable}")
+        data["binaries"] = {}
+        for label, executable in (("projection", projection_executable), ("session", session_executable)):
+            digest = hashlib.sha256()
+            with executable.open("rb") as stream:
+                for block in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(block)
+            data["binaries"][label] = {"path": str(executable), "size_bytes": executable.stat().st_size,
+                                       "sha256": digest.hexdigest()}
         runtime_json = run_root / "runtime.json"
         runtime_stderr = run_root / "runtime.stderr.log"
-        command("runtime", [str(executable), str(args.iterations)], source, runtime_json, runtime_stderr)
+        command("runtime-projection", [str(projection_executable), str(args.iterations)],
+                source, runtime_json, runtime_stderr)
         report = json.loads(runtime_json.read_text(encoding="utf-8"))
         validate_report(report, args.iterations)
-        data["runtime_validated"] = True
+        data["projection_runtime_validated"] = True
+        session_json = run_root / "session-runtime.json"
+        session_stderr = run_root / "session-runtime.stderr.log"
+        command("runtime-session", [str(session_executable), str(args.iterations)],
+                source, session_json, session_stderr)
+        session_report = json.loads(session_json.read_text(encoding="utf-8"))
+        validate_session_report(session_report, args.iterations)
+        validate_same_device(report, session_report)
+        data["session_runtime_validated"] = True
+        data["combined_evidence_scope"] = "same-original-rtx4080-projection-and-synthetic-session-lifecycle"
         command("source-after", [python, "-B", str(evidence_tool), "snapshot", str(source), str(after)])
         command("source-compare", [python, "-B", str(evidence_tool), "compare", str(before), str(after)])
         compare_attempted = True
         data["result"] = "PASS"
-        data["scope_note"] = "Physical CUDA projection test only; no readiness or product qualification claimed."
+        data["scope_note"] = ("Physical CUDA projection and synthetic BF16 session lifecycle tests on the same "
+                               "GPU UUID, ordinal, driver, and runtime; no serving readiness or product "
+                               "qualification claimed. Device-loss injection was not_run.")
     except Exception as exc:
         data["failure"] = str(exc)
     finally:
