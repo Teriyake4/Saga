@@ -117,9 +117,9 @@ if(SAGA_ENABLE_CUDA)
   endif()
 
   add_library(saga_cuda STATIC
-    src/backends/cuda/projection.cu src/backends/cuda/resources.cpp)
+    src/backends/cuda/projection.cu src/backends/cuda/resources.cpp src/backends/cuda/session.cpp)
   target_include_directories(saga_cuda PUBLIC include)
-  target_link_libraries(saga_cuda PUBLIC saga_foundation PRIVATE CUDA::cudart CUDA::cuda_driver)
+  target_link_libraries(saga_cuda PUBLIC saga_runtime PRIVATE CUDA::cudart CUDA::cuda_driver)
   set_target_properties(saga_cuda PROPERTIES
     CUDA_ARCHITECTURES 89 CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON CUDA_EXTENSIONS OFF
     CUDA_SEPARABLE_COMPILATION ON CUDA_RUNTIME_LIBRARY Shared)
@@ -148,6 +148,12 @@ if(SAGA_BUILD_TESTS)
   target_link_libraries(saga_cuda_executor_test PRIVATE saga_foundation)
   add_test(NAME cuda_executor COMMAND saga_cuda_executor_test)
   set_tests_properties(cuda_executor PROPERTIES TIMEOUT 45)
+  add_executable(saga_cuda_session_test tests/cuda_session_test.cpp src/backends/cuda/session.cpp
+    src/backends/cuda/resources.cpp tests/cuda/executor_fake_runtime/runtime.cpp)
+  target_include_directories(saga_cuda_session_test BEFORE PRIVATE tests/cuda/executor_fake_runtime)
+  target_link_libraries(saga_cuda_session_test PRIVATE saga_runtime)
+  add_test(NAME cuda_session COMMAND saga_cuda_session_test)
+  set_tests_properties(cuda_session PROPERTIES TIMEOUT 45)
   foreach(name contracts memory resource_planner platform platform_process config model_config completion execution_worker sequence_slots admission output_buffer runtime_integration model_contracts)
     add_executable(saga_${name}_test tests/${name}_test.cpp)
     if(name STREQUAL "config" OR name STREQUAL "model_config")

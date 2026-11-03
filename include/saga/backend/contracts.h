@@ -141,6 +141,12 @@ public:
     const KernelRequest& bindings() const noexcept { return bindings_; }
     WorkspaceRequirement workspace() const noexcept { return workspace_; }
     const std::string& implementation_id() const noexcept { return implementation_id_; }
+    // Copies of one startup preparation share metadata identity; a same-named replacement does not.
+    bool same_preparation(const PreparedKernel& other) const noexcept {
+        return entry_ == other.entry_ && metadata_.get() == other.metadata_.get() &&
+            bindings_ == other.bindings_ && workspace_ == other.workspace_ &&
+            implementation_id_ == other.implementation_id_;
+    }
 
 private:
     friend class KernelRegistry;
