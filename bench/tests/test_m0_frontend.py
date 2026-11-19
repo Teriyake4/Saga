@@ -87,10 +87,19 @@ class FrontendInputValidationTests(unittest.TestCase):
                     m0_frontend._validate_candidate(json.loads(self._workload(temp, template_options=options).read_text()))
 
     def test_cli_reports_missing_optional_tokenizers_actionably(self):
-        with mock.patch.object(m0_frontend, "_tokenizer_type", side_effect=m0_frontend.FrontendDependencyError("install pinned deps")):
-            stderr = io.StringIO()
-            with contextlib.redirect_stderr(stderr):
-                code = m0_frontend.main(["--compare"])
+        lock = {"models": {"original": {"repo": "original-repo"}, "gsq": {"repo": "gsq-repo"}}}
+        loaded = {}
+        for repo in ("original-repo", "gsq-repo"):
+            loaded[(repo, "tokenizer.json")] = b"{}"
+            loaded[(repo, "tokenizer_config.json")] = b"{}"
+            loaded[(repo, "chat_template.jinja")] = b""
+            loaded[(repo, "config.json")] = b"{}"
+        with mock.patch.object(m0_frontend, "load_locked_files", return_value=(lock, loaded)):
+            with mock.patch.object(m0_frontend, "_tokenizer_type", side_effect=m0_frontend.FrontendDependencyError("install pinned deps")) as tokenizer_type:
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    code = m0_frontend.main(["--compare"])
+        tokenizer_type.assert_called_once_with()
         self.assertEqual(code, 2)
         self.assertIn("install pinned deps", stderr.getvalue())
 

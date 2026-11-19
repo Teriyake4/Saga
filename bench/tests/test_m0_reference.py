@@ -105,14 +105,15 @@ class HarnessTests(unittest.TestCase):
         config_path.write_text(json.dumps(config))
         return MODULE.execute(config_path, self.output)
 
-    def test_dispatch_patch_dry_runs_against_exact_pinned_sources(self):
-        source = ROOT / ".cache/m0-reference/ninfer-4080-2469b5752672ad597055af61fe28e8e7ced20056"
+    def test_dispatch_patch_dry_runs_against_exact_pinned_sources(self, source=None):
+        if source is None:
+            source = ROOT / ".cache/m0-reference/ninfer-4080-2469b5752672ad597055af61fe28e8e7ced20056"
         patch = ROOT / "bench/reference/dispatch-audit.patch"
-        if not source.is_dir():
-            self.skipTest("pinned source archive is not present")
         patch_executable = shutil.which("patch")
         if patch_executable is None:
             self.skipTest("patch executable is not available; applicability is untested in this environment")
+        if not source.is_dir():
+            self.skipTest("pinned source archive is not present")
         before = {
             "q3": MODULE.sha256_file(source / "src/ops/linear/q3/q3_dispatch.cpp"),
             "swiglu": MODULE.sha256_file(source / "src/ops/linear_swiglu/q3/q3_linear_swiglu.cu")}
@@ -130,9 +131,12 @@ class HarnessTests(unittest.TestCase):
             self.assertIn(expected, patch_text)
 
     def test_patch_test_skips_explicitly_when_patch_command_is_missing(self):
-        with (mock.patch.object(shutil, "which", return_value=None),
-              self.assertRaisesRegex(unittest.SkipTest, "applicability is untested")):
-            self.test_dispatch_patch_dry_runs_against_exact_pinned_sources()
+        absent_source = self.base / "explicitly-absent-source"
+        self.assertFalse(absent_source.exists())
+        with (mock.patch.object(shutil, "which", return_value=None) as which,
+              self.assertRaisesRegex(unittest.SkipTest, "patch executable is not available; applicability is untested")):
+            self.test_dispatch_patch_dry_runs_against_exact_pinned_sources(source=absent_source)
+        which.assert_called_once_with("patch")
 
     def test_valid_run_trace_is_stdout_linked_and_never_claims_completion(self):
         self.assertEqual(self.invoke(self.recipe()), 0)
