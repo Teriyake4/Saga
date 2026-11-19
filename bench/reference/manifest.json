@@ -28,7 +28,8 @@
       "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
       "status": "metadata-only",
       "unresolved": [
-        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established.",
+        "No operator-supplied artifact root or verified weight payloads were available for this review; source tensor/operator binding remains unresolved. See ../../docs/m0-artifact-inventory.md#pinned-source-tensor-contract-and-bounded-next-slice."
       ]
     },
     {
@@ -41,7 +42,8 @@
       "revision": "b5ce0b76f60020a875dee4f6ec9d934cca4121e4",
       "status": "metadata-only",
       "unresolved": [
-        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established.",
+        "Config and pinned converter contract describe GSQ packed triples and layer mappings, but actual weight payloads/index/shard headers are not supplied or byte-verified. See ../../docs/m0-artifact-inventory.md#pinned-source-tensor-contract-and-bounded-next-slice."
       ]
     },
     {
@@ -54,7 +56,8 @@
       "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
       "status": "metadata-only",
       "unresolved": [
-        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established.",
+        "Converter intent sources MTP direct tensors from the official root; availability and component bytes/checksums remain unverified. See ../../docs/m0-artifact-inventory.md#pinned-source-tensor-contract-and-bounded-next-slice."
       ]
     },
     {
@@ -67,7 +70,8 @@
       "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
       "status": "metadata-only",
       "unresolved": [
-        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established.",
+        "Original-root vision bytes were not supplied for this review and remain unavailable for the quality oracle. The pinned converter intends a GSQ-root vision candidate, which does not establish equivalence or component availability; GGUF placement remains unresolved. See ../../docs/m0-artifact-inventory.md#pinned-source-tensor-contract-and-bounded-next-slice."
       ]
     },
     {
@@ -124,7 +128,8 @@
       "revision": "d648daf360dea5a9d0731071b5990da5293f525a",
       "status": "metadata-only",
       "unresolved": [
-        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established."
+        "Full component bytes/checksums and independent tensor/frontend compatibility evidence not established.",
+        "Pinned converter produces an NInfer package, not GGUF; no GGUF mapping is established. Actual artifact parent hashes/ranges, encoding/axes/scales/padding/layout remain unbound. See ../../docs/m0-artifact-inventory.md#pinned-source-tensor-contract-and-bounded-next-slice."
       ]
     }
   ],
@@ -136,7 +141,8 @@
     "M0.5 mandatory suite/OS scope and actual phase/site A16/A8/rounding dispatch unfrozen.",
     "M0.6 small scalar/layer and target-derived matrix recurrence fixtures exist; the complete target layer/state/frontend fixture inventory and compiled precision evidence remain missing.",
     "M0.7 original-BF16 baselines, datasets, budgets and statistical preregistration unresolved.",
-    "M0.8 converter/build/dependency toolchain pins and artifact licenses/inventories not complete."
+    "M0.8 converter/build/dependency toolchain pins and artifact licenses/inventories not complete.",
+    "Source-derived block contract is documented in ../../docs/m0-artifact-inventory.md#pinned-source-tensor-contract-and-bounded-next-slice; no operator-supplied root or verified original/GSQ weight payloads/index bindings were available for this review. Preserve output_gate_type swish versus reference sigmoid, configured context 262144 versus reference 1048576, tokenizer vocab 248077 versus config/output size 248320, endpoint physical sharing, and MTP/vision GGUF placement as unresolved pending authoritative semantics and supplied bytes."
   ],
   "candidate_cases": [
     {
