@@ -146,7 +146,7 @@ memory::Profile full_profile(const Counts& counts, bool graphs) {
         {memory::Category::pinned_control, memory::Location::pinned}
     };
     std::size_t n = 0;
-    for (const auto [category, location] : required) {
+    for (const auto& [category, location] : required) {
         memory::Term t;
         t.id = category == memory::Category::text_weights ? "weights" : "zero-" + std::to_string(n);
         t.owner = "synthetic";
